@@ -7,7 +7,6 @@
 
 extern void set_error(const char *msg);
 
-// Transition state structure
 struct ww_transition_state {
     ww_transition_type_t type;
     float duration;
@@ -23,7 +22,6 @@ struct ww_transition_state {
     int stride;
 };
 
-// Create a new transition state
 ww_transition_state *ww_transition_create(ww_transition_type_t type, float duration,
                                          int width, int height) {
     if (width <= 0 || height <= 0 || duration <= 0) {
@@ -43,7 +41,7 @@ ww_transition_state *ww_transition_create(ww_transition_type_t type, float durat
     state->active = false;
     state->width = width;
     state->height = height;
-    state->stride = width * 4; // RGBA/BGRA
+    state->stride = width * 4;
     
     size_t buffer_size = width * height * 4;
     
@@ -60,7 +58,6 @@ ww_transition_state *ww_transition_create(ww_transition_type_t type, float durat
         return nullptr;
     }
     
-    // Initialize buffers to black
     memset(state->old_buffer, 0, buffer_size);
     memset(state->new_buffer, 0, buffer_size);
     memset(state->output_buffer, 0, buffer_size);
@@ -68,7 +65,6 @@ ww_transition_state *ww_transition_create(ww_transition_type_t type, float durat
     return state;
 }
 
-// Destroy transition state
 void ww_transition_destroy(ww_transition_state *state) {
     if (!state) return;
     
@@ -78,8 +74,7 @@ void ww_transition_destroy(ww_transition_state *state) {
     free(state);
 }
 
-// Start a new transition
-void ww_transition_start(ww_transition_state *state, const uint8_t *old_data, 
+void ww_transition_start(ww_transition_state *state, const uint8_t *old_data,
                          const uint8_t *new_data) {
     if (!state || !old_data || !new_data) return;
     
@@ -92,7 +87,6 @@ void ww_transition_start(ww_transition_state *state, const uint8_t *old_data,
     state->active = true;
 }
 
-// Easing function - smooth ease in/out
 static float ease_in_out(float t) {
     if (t < 0.5f) {
         return 2.0f * t * t;
@@ -101,12 +95,10 @@ static float ease_in_out(float t) {
     }
 }
 
-// Linear interpolation
 static inline uint8_t lerp_u8(uint8_t a, uint8_t b, float t) {
     return (uint8_t)(a + (b - a) * t);
 }
 
-// Fade transition
 static void apply_fade_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     
@@ -117,7 +109,6 @@ static void apply_fade_transition(ww_transition_state *state, float progress) {
     }
 }
 
-// Slide left transition
 static void apply_slide_left_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int offset = (int)(state->width * t);
@@ -128,11 +119,9 @@ static void apply_slide_left_transition(ww_transition_state *state, float progre
             size_t dst_idx = (y * state->width + x) * 4;
             
             if (src_x < state->width) {
-                // Show old buffer sliding out
                 size_t src_idx = (y * state->width + src_x) * 4;
                 memcpy(&state->output_buffer[dst_idx], &state->old_buffer[src_idx], 4);
             } else {
-                // Show new buffer sliding in
                 src_x -= state->width;
                 size_t src_idx = (y * state->width + src_x) * 4;
                 memcpy(&state->output_buffer[dst_idx], &state->new_buffer[src_idx], 4);
@@ -141,7 +130,6 @@ static void apply_slide_left_transition(ww_transition_state *state, float progre
     }
 }
 
-// Slide right transition
 static void apply_slide_right_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int offset = (int)(state->width * t);
@@ -165,7 +153,6 @@ static void apply_slide_right_transition(ww_transition_state *state, float progr
     }
 }
 
-// Slide up transition
 static void apply_slide_up_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int offset = (int)(state->height * t);
@@ -174,12 +161,10 @@ static void apply_slide_up_transition(ww_transition_state *state, float progress
         int src_y = y + offset;
         
         if (src_y < state->height) {
-            // Show old buffer sliding out
             memcpy(&state->output_buffer[y * state->stride],
                    &state->old_buffer[src_y * state->stride],
                    state->stride);
         } else {
-            // Show new buffer sliding in
             src_y -= state->height;
             memcpy(&state->output_buffer[y * state->stride],
                    &state->new_buffer[src_y * state->stride],
@@ -188,7 +173,6 @@ static void apply_slide_up_transition(ww_transition_state *state, float progress
     }
 }
 
-// Slide down transition
 static void apply_slide_down_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int offset = (int)(state->height * t);
@@ -197,12 +181,10 @@ static void apply_slide_down_transition(ww_transition_state *state, float progre
         int src_y = y - offset;
         
         if (src_y >= 0) {
-            // Show old buffer sliding out
             memcpy(&state->output_buffer[y * state->stride],
                    &state->old_buffer[src_y * state->stride],
                    state->stride);
         } else {
-            // Show new buffer sliding in
             src_y += state->height;
             memcpy(&state->output_buffer[y * state->stride],
                    &state->new_buffer[src_y * state->stride],
@@ -211,7 +193,6 @@ static void apply_slide_down_transition(ww_transition_state *state, float progre
     }
 }
 
-// Zoom in transition
 static void apply_zoom_in_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     float scale = 1.0f + t * 0.5f; // Zoom from 1.0 to 1.5
@@ -245,7 +226,6 @@ static void apply_zoom_in_transition(ww_transition_state *state, float progress)
     }
 }
 
-// Zoom out transition
 static void apply_zoom_out_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     float scale = 1.0f - t * 0.3f; // Zoom from 1.0 to 0.7
@@ -281,7 +261,6 @@ static void apply_zoom_out_transition(ww_transition_state *state, float progress
     }
 }
 
-// Circle open transition
 static void apply_circle_open_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     float max_radius = sqrtf(state->width * state->width + state->height * state->height) / 2.0f;
@@ -307,7 +286,6 @@ static void apply_circle_open_transition(ww_transition_state *state, float progr
     }
 }
 
-// Circle close transition
 static void apply_circle_close_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     float max_radius = sqrtf(state->width * state->width + state->height * state->height) / 2.0f;
@@ -333,7 +311,6 @@ static void apply_circle_close_transition(ww_transition_state *state, float prog
     }
 }
 
-// Wipe left transition (curtain effect)
 static void apply_wipe_left_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int boundary = (int)(state->width * t);
@@ -351,7 +328,6 @@ static void apply_wipe_left_transition(ww_transition_state *state, float progres
     }
 }
 
-// Wipe right transition
 static void apply_wipe_right_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int boundary = (int)(state->width * (1.0f - t));
@@ -369,7 +345,6 @@ static void apply_wipe_right_transition(ww_transition_state *state, float progre
     }
 }
 
-// Wipe up transition
 static void apply_wipe_up_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int boundary = (int)(state->height * (1.0f - t));
@@ -387,7 +362,6 @@ static void apply_wipe_up_transition(ww_transition_state *state, float progress)
     }
 }
 
-// Wipe down transition
 static void apply_wipe_down_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     int boundary = (int)(state->height * t);
@@ -405,7 +379,6 @@ static void apply_wipe_down_transition(ww_transition_state *state, float progres
     }
 }
 
-// Dissolve transition (random pixel fade)
 static void apply_dissolve_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     
@@ -427,7 +400,6 @@ static void apply_dissolve_transition(ww_transition_state *state, float progress
     }
 }
 
-// Pixelate transition
 static void apply_pixelate_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
     

@@ -12,10 +12,7 @@
 
 #include "ww.h"
 
-// ============================================================================
-// Global State
-// ============================================================================
-
+// Global state for signal handling
 static volatile bool running = true;
 static volatile bool needs_update = false;
 
@@ -30,8 +27,7 @@ static void signal_handler(int signum) {
 }
 
 static void print_version() {
-    std::cout << "ww v" << WW_VERSION_MAJOR << "." 
-              << WW_VERSION_MINOR << "." 
+    std::cout << "ww v" << WW_VERSION_MAJOR << "." << WW_VERSION_MINOR << "." 
               << WW_VERSION_PATCH << std::endl;
     std::cout << "Universal Wayland wallpaper setter" << std::endl;
 }
@@ -39,30 +35,23 @@ static void print_version() {
 static uint32_t parse_color(const char *color_str) {
     if (!color_str) return 0xFF000000;
     
-    // Skip '#' if present
-    if (color_str[0] == '#') {
-        color_str++;
-    }
+    if (color_str[0] == '#') color_str++;
     
     unsigned int r, g, b, a = 255;
     int len = strlen(color_str);
     
     if (len == 6) {
-        // RGB format
         sscanf(color_str, "%02x%02x%02x", &r, &g, &b);
     } else if (len == 8) {
-        // RGBA format
         sscanf(color_str, "%02x%02x%02x%02x", &r, &g, &b, &a);
     } else {
-        return 0xFF000000; // Default black
+        return 0xFF000000;
     }
     
-    // Return as RGBA
     return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
 static void print_usage(const char *prog_name) {
-    // Use basename to show just "ww" instead of full path
     char *prog_copy = strdup(prog_name);
     char *base = basename(prog_copy);
     
@@ -133,32 +122,26 @@ static void list_outputs() {
     free(outputs);
 }
 
-// ============================================================================
-// Main Entry Point
-// ============================================================================
-
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         print_usage(argv[0]);
         return 1;
     }
 
-    // Configuration
     ww_config_t config = {
         .file_path = nullptr,
         .type = WW_TYPE_UNKNOWN,
         .output_name = nullptr,
         .loop = false,
         .mode = WW_MODE_FIT,
-        .bg_color = 0x000000FF, // Black with full alpha
+        .bg_color = 0x000000FF,
         .transition = WW_TRANSITION_NONE,
         .transition_duration = 0.0f,
         .transition_fps = 30,
     };
 
-    // Slideshow options
     bool slideshow_mode = false;
-    int slideshow_interval = 300;  // 5 minutes default
+    int slideshow_interval = 300;
     bool random_mode = false;
     bool recursive_mode = false;
     ww_transition_type_t transition_type = WW_TRANSITION_FADE;
@@ -166,7 +149,6 @@ int main(int argc, char *argv[]) {
     int transition_fps = 30;
     std::vector<std::string> files;
 
-    // Parse command line arguments
     static struct option long_options[] = {
         {"output",        required_argument, 0, 'o'},
         {"mode",          required_argument, 0, 'm'},
@@ -306,20 +288,17 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Initialize Wayland connection
     if (ww_init() != 0) {
         std::cerr << "Error: Failed to initialize: " << ww_get_error() << std::endl;
         return 1;
     }
 
-    // Handle list-outputs mode
     if (list_mode) {
         list_outputs();
         ww_cleanup();
         return 0;
     }
 
-    // Get file path(s) from remaining arguments (or use solid color)
     if (optind >= argc) {
         if (!color_only) {
             std::cerr << "Error: No file or color specified" << std::endl;
@@ -327,15 +306,12 @@ int main(int argc, char *argv[]) {
             ww_cleanup();
             return 1;
         }
-        // Solid color mode
         config.type = WW_TYPE_SOLID_COLOR;
         config.file_path = nullptr;
     } else {
-        // Collect all file/directory arguments
         for (int i = optind; i < argc; i++) {
             struct stat st;
             if (stat(argv[i], &st) == 0 && S_ISDIR(st.st_mode)) {
-                // It's a directory - scan it for images
                 ww_file_list_t file_list = {nullptr, 0};
                 if (ww_scan_directory(argv[i], &file_list, recursive_mode) == 0) {
                     for (int j = 0; j < file_list.count; j++) {
@@ -348,41 +324,33 @@ int main(int argc, char *argv[]) {
                               << ": " << ww_get_error() << std::endl;
                 }
             } else {
-                // It's a file
                 files.push_back(argv[i]);
             }
         }
 
-        // Check if we have any files
         if (files.empty()) {
             std::cerr << "Error: No valid files found" << std::endl;
             ww_cleanup();
             return 1;
         }
 
-        // Check slideshow requirements
         if (slideshow_mode && files.size() < 2) {
             std::cerr << "Error: Slideshow mode requires at least 2 files" << std::endl;
             ww_cleanup();
             return 1;
         }
 
-        // Shuffle if random mode
         if (random_mode && files.size() > 1) {
             std::random_device rd;
             std::mt19937 g(rd());
             std::shuffle(files.begin(), files.end(), g);
         }
 
-        // Use first file initially
         config.file_path = files[0].c_str();
-        
-        // Set transition parameters
         config.transition = transition_type;
         config.transition_duration = transition_duration;
         config.transition_fps = transition_fps;
 
-        // Detect file type
         config.type = ww_detect_filetype(config.file_path);
         if (config.type == WW_TYPE_UNKNOWN) {
             std::cerr << "Error: Unsupported file type: " << config.file_path << std::endl;
@@ -391,7 +359,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Set the wallpaper (non-blocking for slideshow, blocking otherwise)
     if (slideshow_mode) {
         if (ww_set_wallpaper_no_loop(&config) != 0) {
             std::cerr << "Error: Failed to set wallpaper: " << ww_get_error() << std::endl;
@@ -409,7 +376,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // Slideshow mode - keep running and switch wallpapers
     const char *transition_name = "none";
     switch (transition_type) {
         case WW_TRANSITION_FADE: transition_name = "fade"; break;
@@ -435,7 +401,6 @@ int main(int argc, char *argv[]) {
     std::cout << "  Random: " << (random_mode ? "yes" : "no") << std::endl;
     std::cout << "  Transition: " << transition_name << " (" << transition_duration << "s @ " << transition_fps << " FPS)" << std::endl;
 
-    // Setup signal handlers
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGALRM, alarm_handler);
@@ -447,9 +412,7 @@ int main(int argc, char *argv[]) {
         if (needs_update) {
             needs_update = false;
             
-            // Move to next image
             if (random_mode) {
-                // Pick random image (different from current)
                 size_t new_index = current_index;
                 if (files.size() > 1) {
                     std::random_device rd;
@@ -461,11 +424,9 @@ int main(int argc, char *argv[]) {
                 }
                 current_index = new_index;
             } else {
-                // Sequential
                 current_index = (current_index + 1) % files.size();
             }
 
-            // Update wallpaper with transition
             config.file_path = files[current_index].c_str();
             config.type = ww_detect_filetype(config.file_path);
             config.transition = transition_type;
@@ -475,20 +436,16 @@ int main(int argc, char *argv[]) {
             if (config.type != WW_TYPE_UNKNOWN) {
                 std::cout << "Switching to: " << files[current_index] << std::endl;
                 
-                // Set new wallpaper without blocking
                 if (ww_set_wallpaper_no_loop(&config) != 0) {
                     std::cerr << "Warning: Failed to set wallpaper: " << ww_get_error() << std::endl;
                 }
             }
 
-            // Set next alarm
             alarm(slideshow_interval);
         }
 
-        // Dispatch wayland events (with short timeout to process frame callbacks)
         ww_dispatch_events();
         
-        // Sleep based on configured FPS to avoid busy loop
         int sleep_us = 1000000 / (transition_fps > 0 ? transition_fps : 30);
         usleep(sleep_us);
     }

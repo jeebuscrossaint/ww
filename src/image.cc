@@ -15,19 +15,17 @@
 extern "C" {
 
 struct image_data_t {
-    uint8_t *data;      // RGBA pixel data
+    uint8_t *data;
     int width;
     int height;
-    int channels;       // Original channels
+    int channels;
 };
 
-// Load WebP image
 static image_data_t* load_webp(const char *path) {
     if (!path) {
         return nullptr;
     }
 
-    // Read file into memory
     FILE *file = fopen(path, "rb");
     if (!file) {
         fprintf(stderr, "Failed to open WebP file: %s\n", path);
@@ -52,14 +50,12 @@ static image_data_t* load_webp(const char *path) {
     }
     fclose(file);
 
-    // Decode WebP
     image_data_t *img = (image_data_t*)malloc(sizeof(image_data_t));
     if (!img) {
         free(file_data);
         return nullptr;
     }
 
-    // Decode to RGBA
     img->data = WebPDecodeRGBA(file_data, file_size, &img->width, &img->height);
     img->channels = 4;
 
@@ -74,7 +70,6 @@ static image_data_t* load_webp(const char *path) {
     return img;
 }
 
-// Load TIFF image
 static image_data_t* load_tiff(const char *path) {
     if (!path) {
         return nullptr;
@@ -96,7 +91,6 @@ static image_data_t* load_tiff(const char *path) {
     TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &img->height);
     img->channels = 4;
 
-    // Allocate RGBA buffer
     size_t npixels = img->width * img->height;
     img->data = (uint8_t*)malloc(npixels * 4);
     if (!img->data) {
@@ -105,8 +99,7 @@ static image_data_t* load_tiff(const char *path) {
         return nullptr;
     }
 
-    // Read RGBA data
-    if (!TIFFReadRGBAImageOriented(tif, img->width, img->height, 
+    if (!TIFFReadRGBAImageOriented(tif, img->width, img->height,
                                    (uint32_t*)img->data, ORIENTATION_TOPLEFT, 0)) {
         fprintf(stderr, "Failed to read TIFF image\n");
         free(img->data);
@@ -117,7 +110,6 @@ static image_data_t* load_tiff(const char *path) {
 
     TIFFClose(tif);
 
-    // TIFFReadRGBAImage returns ABGR, convert to RGBA
     for (size_t i = 0; i < npixels; i++) {
         uint8_t r = img->data[i * 4 + 0];
         uint8_t g = img->data[i * 4 + 1];
@@ -133,13 +125,11 @@ static image_data_t* load_tiff(const char *path) {
     return img;
 }
 
-// Load JXL (JPEG XL) image
 static image_data_t* load_jxl(const char *path) {
     if (!path) {
         return nullptr;
     }
 
-    // Read file into memory
     FILE *file = fopen(path, "rb");
     if (!file) {
         fprintf(stderr, "Failed to open JXL file: %s\n", path);
@@ -164,7 +154,6 @@ static image_data_t* load_jxl(const char *path) {
     }
     fclose(file);
 
-    // Initialize decoder
     auto dec = JxlDecoderMake(nullptr);
     if (!dec) {
         fprintf(stderr, "Failed to create JXL decoder\n");
@@ -238,7 +227,6 @@ static image_data_t* load_jxl(const char *path) {
                 return nullptr;
             }
         } else if (status == JXL_DEC_FULL_IMAGE) {
-            // Successfully decoded
             break;
         } else if (status == JXL_DEC_SUCCESS) {
             break;
@@ -256,7 +244,6 @@ static image_data_t* load_jxl(const char *path) {
     return img;
 }
 
-// Load Farbfeld image (simple suckless format)
 static image_data_t* load_farbfeld(const char *path) {
     if (!path) {
         return nullptr;
@@ -268,7 +255,6 @@ static image_data_t* load_farbfeld(const char *path) {
         return nullptr;
     }
 
-    // Read header: "farbfeld" magic (8 bytes) + width (4) + height (4)
     uint8_t magic[8];
     if (fread(magic, 1, 8, file) != 8 || memcmp(magic, "farbfeld", 8) != 0) {
         fprintf(stderr, "Invalid Farbfeld magic\n");
@@ -283,7 +269,6 @@ static image_data_t* load_farbfeld(const char *path) {
         return nullptr;
     }
 
-    // Convert from big-endian
     uint32_t width = __builtin_bswap32(width_be);
     uint32_t height = __builtin_bswap32(height_be);
 
@@ -304,7 +289,6 @@ static image_data_t* load_farbfeld(const char *path) {
         return nullptr;
     }
 
-    // Read RGBA data (16-bit per channel, big-endian)
     for (uint32_t i = 0; i < width * height; i++) {
         uint16_t rgba[4];
         if (fread(rgba, 2, 4, file) != 4) {
@@ -315,18 +299,16 @@ static image_data_t* load_farbfeld(const char *path) {
             return nullptr;
         }
 
-        // Convert 16-bit to 8-bit and from big-endian
-        img->data[i * 4 + 0] = __builtin_bswap16(rgba[0]) >> 8; // R
-        img->data[i * 4 + 1] = __builtin_bswap16(rgba[1]) >> 8; // G
-        img->data[i * 4 + 2] = __builtin_bswap16(rgba[2]) >> 8; // B
-        img->data[i * 4 + 3] = __builtin_bswap16(rgba[3]) >> 8; // A
+        img->data[i * 4 + 0] = __builtin_bswap16(rgba[0]) >> 8;
+        img->data[i * 4 + 1] = __builtin_bswap16(rgba[1]) >> 8;
+        img->data[i * 4 + 2] = __builtin_bswap16(rgba[2]) >> 8;
+        img->data[i * 4 + 3] = __builtin_bswap16(rgba[3]) >> 8;
     }
 
     fclose(file);
     return img;
 }
 
-// Load image from file using stb_image
 static image_data_t* load_image(const char *path) {
     if (!path) {
         return nullptr;
@@ -351,7 +333,6 @@ static image_data_t* load_image(const char *path) {
 
 
 
-// Cubic interpolation helper for bicubic scaling
 static inline float cubic_hermite(float A, float B, float C, float D, float t) {
     float a = -A / 2.0f + (3.0f * B) / 2.0f - (3.0f * C) / 2.0f + D / 2.0f;
     float b = A - (5.0f * B) / 2.0f + 2.0f * C - D / 2.0f;
@@ -360,14 +341,12 @@ static inline float cubic_hermite(float A, float B, float C, float D, float t) {
     return a * t * t * t + b * t * t + c * t + d;
 }
 
-// Clamp value to 0-255 range
 static inline uint8_t clamp_u8(float value) {
     if (value < 0.0f) return 0;
     if (value > 255.0f) return 255;
     return (uint8_t)value;
 }
 
-// Bilinear interpolation scaling (better quality than nearest-neighbor)
 static void scale_bilinear(const image_data_t *src, image_data_t *dst) {
     float x_ratio = (float)src->width / (float)dst->width;
     float y_ratio = (float)src->height / (float)dst->height;
@@ -396,14 +375,12 @@ static void scale_bilinear(const image_data_t *src, image_data_t *dst) {
                 float top = src->data[idx_tl] * (1.0f - x_diff) + src->data[idx_tr] * x_diff;
                 float bottom = src->data[idx_bl] * (1.0f - x_diff) + src->data[idx_br] * x_diff;
                 float value = top * (1.0f - y_diff) + bottom * y_diff;
-                
                 dst->data[dst_idx + c] = clamp_u8(value);
             }
         }
     }
 }
 
-// Bicubic interpolation scaling (highest quality)
 static void scale_bicubic(const image_data_t *src, image_data_t *dst) {
     float x_ratio = (float)src->width / (float)dst->width;
     float y_ratio = (float)src->height / (float)dst->height;
@@ -447,8 +424,6 @@ static void scale_bicubic(const image_data_t *src, image_data_t *dst) {
     }
 }
 
-// Scale image to fit output dimensions while preserving aspect ratio
-// Now uses bicubic scaling for high quality
 static image_data_t* scale_image(const image_data_t *src, int target_width, int target_height, bool preserve_aspect) {
     if (!src || !src->data) {
         return nullptr;
@@ -462,17 +437,14 @@ static image_data_t* scale_image(const image_data_t *src, int target_width, int 
         float dst_aspect = (float)target_width / (float)target_height;
 
         if (src_aspect > dst_aspect) {
-            // Image is wider than output
             new_width = target_width;
             new_height = (int)(target_width / src_aspect);
         } else {
-            // Image is taller than output
             new_height = target_height;
             new_width = (int)(target_height * src_aspect);
         }
     }
 
-    // Allocate new image
     image_data_t *scaled = (image_data_t*)malloc(sizeof(image_data_t));
     if (!scaled) {
         return nullptr;

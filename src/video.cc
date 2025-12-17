@@ -13,7 +13,6 @@ extern "C" {
 #include <libavutil/imgutils.h>
 }
 
-// Forward declarations
 extern void set_error(const char *msg);
 struct image_data_t {
     uint8_t *data;
@@ -22,7 +21,6 @@ struct image_data_t {
     int channels;
 };
 
-// Video decoder state
 struct video_decoder_t {
     AVFormatContext *format_ctx;
     AVCodecContext *codec_ctx;
@@ -47,7 +45,6 @@ struct video_decoder_t {
     pthread_mutex_t lock;
 };
 
-// Create video decoder
 extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, int target_height, bool loop) {
     if (!path) {
         set_error("NULL path provided");
@@ -66,14 +63,12 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
     decoder->video_stream_idx = -1;
     pthread_mutex_init(&decoder->lock, nullptr);
     
-    // Open input file
     if (avformat_open_input(&decoder->format_ctx, path, nullptr, nullptr) < 0) {
         set_error("Failed to open video file");
         free(decoder);
         return nullptr;
     }
     
-    // Retrieve stream information
     if (avformat_find_stream_info(decoder->format_ctx, nullptr) < 0) {
         set_error("Failed to find stream info");
         avformat_close_input(&decoder->format_ctx);
@@ -81,7 +76,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
-    // Find video stream
     for (unsigned int i = 0; i < decoder->format_ctx->nb_streams; i++) {
         if (decoder->format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             decoder->video_stream_idx = i;
@@ -96,10 +90,8 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
-    // Get codec parameters
     AVCodecParameters *codecpar = decoder->format_ctx->streams[decoder->video_stream_idx]->codecpar;
     
-    // Find decoder
     const AVCodec *codec = avcodec_find_decoder(codecpar->codec_id);
     if (!codec) {
         set_error("Codec not found");
@@ -108,7 +100,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
-    // Allocate codec context
     decoder->codec_ctx = avcodec_alloc_context3(codec);
     if (!decoder->codec_ctx) {
         set_error("Failed to allocate codec context");
@@ -117,7 +108,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
-    // Copy codec parameters to context
     if (avcodec_parameters_to_context(decoder->codec_ctx, codecpar) < 0) {
         set_error("Failed to copy codec parameters");
         avcodec_free_context(&decoder->codec_ctx);
@@ -126,7 +116,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
-    // Open codec
     if (avcodec_open2(decoder->codec_ctx, codec, nullptr) < 0) {
         set_error("Failed to open codec");
         avcodec_free_context(&decoder->codec_ctx);
@@ -138,7 +127,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
     decoder->width = decoder->codec_ctx->width;
     decoder->height = decoder->codec_ctx->height;
     
-    // Get FPS
     AVRational frame_rate = decoder->format_ctx->streams[decoder->video_stream_idx]->avg_frame_rate;
     if (frame_rate.num && frame_rate.den) {
         decoder->fps = (double)frame_rate.num / (double)frame_rate.den;
@@ -148,7 +136,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         decoder->frame_duration = 1.0 / 30.0;
     }
     
-    // Allocate frame and packet
     decoder->frame = av_frame_alloc();
     decoder->packet = av_packet_alloc();
     
@@ -162,7 +149,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
-    // Initialize software scaler
     decoder->sws_ctx = sws_getContext(
         decoder->width, decoder->height, decoder->codec_ctx->pix_fmt,
         target_width, target_height, AV_PIX_FMT_RGBA,
@@ -182,7 +168,6 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
     return decoder;
 }
 
-// Decode next frame
 extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
     if (!decoder) {
         set_error("NULL decoder");
@@ -191,15 +176,12 @@ extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
     
     pthread_mutex_lock(&decoder->lock);
     
-    // Read frames until we get a video frame
     while (true) {
         int ret = av_read_frame(decoder->format_ctx, decoder->packet);
         
         if (ret < 0) {
             if (ret == AVERROR_EOF) {
-                // End of file
                 if (decoder->loop) {
-                    // Seek back to start
                     av_seek_frame(decoder->format_ctx, decoder->video_stream_idx, 0, AVSEEK_FLAG_BACKWARD);
                     avcodec_flush_buffers(decoder->codec_ctx);
                     continue;
@@ -215,13 +197,11 @@ extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
             }
         }
         
-        // Check if packet is from video stream
         if (decoder->packet->stream_index != decoder->video_stream_idx) {
             av_packet_unref(decoder->packet);
             continue;
         }
         
-        // Send packet to decoder
         ret = avcodec_send_packet(decoder->codec_ctx, decoder->packet);
         av_packet_unref(decoder->packet);
         
@@ -231,7 +211,6 @@ extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
             return nullptr;
         }
         
-        // Receive decoded frame
         ret = avcodec_receive_frame(decoder->codec_ctx, decoder->frame);
         if (ret == AVERROR(EAGAIN)) {
             continue;
@@ -241,11 +220,9 @@ extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
             return nullptr;
         }
         
-        // Successfully decoded a frame
         break;
     }
     
-    // Allocate output image
     image_data_t *img = (image_data_t*)malloc(sizeof(image_data_t));
     if (!img) {
         set_error("Out of memory");
@@ -265,7 +242,6 @@ extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
         return nullptr;
     }
     
-    // Convert frame to RGBA
     uint8_t *dst_data[4] = { img->data, nullptr, nullptr, nullptr };
     int dst_linesize[4] = { decoder->target_width * 4, 0, 0, 0 };
     
@@ -282,7 +258,6 @@ extern "C" image_data_t* ww_video_next_frame(video_decoder_t *decoder) {
     return img;
 }
 
-// Get frame duration in seconds
 extern "C" double ww_video_get_frame_duration(video_decoder_t *decoder) {
     if (!decoder) {
         return 1.0 / 30.0; // Default 30 FPS
@@ -290,7 +265,6 @@ extern "C" double ww_video_get_frame_duration(video_decoder_t *decoder) {
     return decoder->frame_duration;
 }
 
-// Check if video reached EOF
 extern "C" bool ww_video_is_eof(video_decoder_t *decoder) {
     if (!decoder) {
         return true;
@@ -298,7 +272,6 @@ extern "C" bool ww_video_is_eof(video_decoder_t *decoder) {
     return decoder->eof;
 }
 
-// Seek to start
 extern "C" void ww_video_seek_start(video_decoder_t *decoder) {
     if (!decoder) {
         return;
@@ -311,7 +284,6 @@ extern "C" void ww_video_seek_start(video_decoder_t *decoder) {
     pthread_mutex_unlock(&decoder->lock);
 }
 
-// Destroy video decoder
 extern "C" void ww_video_destroy(video_decoder_t *decoder) {
     if (!decoder) {
         return;

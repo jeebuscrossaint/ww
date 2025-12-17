@@ -1,26 +1,23 @@
 # ww - Universal Wayland Wallpaper Setter
 
-A fast, optimized, and universal wallpaper setter for Wayland compositors.
+Fast wallpaper setter for Wayland compositors with support for images, videos, and slideshows.
 
 ## Features
 
-- **Fast & Optimized** - Written in C++ with performance in mind
-- **Universal Format Support** - PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld, GIF, MP4, WebM
-- **Multi-Monitor** - Set wallpapers per-output or all at once
-- **Animated Wallpapers** - Support for GIF and video formats
-- **Slideshow Mode** - Automatic slideshow with directory scanning and transitions
-- **Smooth Transitions** - Fade and slide effects between wallpapers
-- **Directory Scanning** - Recursively scan folders for images
-- **Compositor Agnostic** - Works with wlroots-based compositors (sway, Hyprland, etc.)
+- Supports lots of image formats: PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld
+- Animated wallpapers (GIF, MP4, WebM)
+- Slideshow mode with transitions
+- Multi-monitor support
+- Works with wlroots-based compositors (sway, Hyprland, etc.)
 
-## Supported Formats
+## Formats
 
-- **Static Images**: PNG, JPEG, WebP, TIFF/TIF, JPEG XL (JXL), BMP, TGA, PNM/PBM/PGM/PPM, Farbfeld
-- **Animated**: GIF, MP4, WebM, Animated WebP
+Static: PNG, JPEG, WebP, TIFF/TIF, JXL, BMP, TGA, PNM/PBM/PGM/PPM, Farbfeld  
+Animated: GIF, MP4, WebM, Animated WebP
 
 ## Building
 
-### Quick Start (TL;DR)
+### Quick start
 
 ```bash
 git clone https://github.com/jeebuscrossaint/ww.git
@@ -30,12 +27,11 @@ xmake                      # Build the project (auto-installs most dependencies)
 xmake install              # Install to ~/.local/bin (or use sudo for system-wide)
 ```
 
-### Prerequisites
+### Dependencies
 
-First install the xmake build system.
+Install xmake first. It'll download most deps automatically (stb, libtiff, libwebp, libjxl, ffmpeg).
 
-xmake will automatically download and build most dependencies (stb, libtiff, libwebp, libjxl, ffmpeg).
-You only need to install Wayland system libraries:
+You just need Wayland dev packages:
 
 ```bash
 # Arch Linux
@@ -52,9 +48,9 @@ sudo dnf install wayland-devel wayland-protocols-devel
 ```
 
 
-### Build Instructions
+### Building
 
-Before building, you must generate the Wayland protocol C bindings from the XML files:
+Generate the Wayland protocol bindings first:
 
 ```bash
 ./generate_protocols.sh
@@ -66,18 +62,12 @@ This script uses `wayland-scanner` to generate:
 - `build/protocols/xdg-shell-client-protocol.h`
 - `build/protocols/xdg-shell-protocol.c`
 
-The script also automatically fixes C++ keyword collisions (the `wlr-layer-shell` protocol uses `namespace` as a parameter name, which is a C++ keyword).
+The script also fixes a C++ keyword collision (`namespace` → `name_space` in wlr-layer-shell).
 
-**Note:** You only need to run this once (or after protocol XML files are updated).
-
-Proceed to build with xamake.
+Run this once, then build:
 
 ```bash
-# Default build (release mode)
-# xmake will auto-download and build missing dependencies
-xmake
-
-# Or explicitly set release mode (optimized, stripped)
+# Release build
 xmake f -m release
 xmake
 
@@ -98,19 +88,10 @@ sudo xmake install -o /usr/local
 
 ### Build Troubleshooting
 
-**Error: "cannot find protocol header files"**
-- Run `./generate_protocols.sh` first to generate the protocol bindings
-
-**Error: "wayland-scanner not found"**
-- Install `wayland-protocols` package: `sudo pacman -S wayland-protocols`
-
-**First build is slow?**
-- Normal! xmake is downloading and building dependencies (ffmpeg, libwebp, etc.)
-- Subsequent builds will be much faster
-
-**Package download fails?**
-- Try: `xmake f --pkg=system` to prefer system packages
-- Or manually install system packages (see Prerequisites section)
+- **"cannot find protocol header files"** → Run `./generate_protocols.sh` first
+- **"wayland-scanner not found"** → Install wayland-protocols
+- **First build slow?** → xmake is downloading deps, subsequent builds are faster
+- **Package download fails?** → Try `xmake f --pkg=system` or install system packages
 
 ## Usage
 
@@ -223,13 +204,13 @@ ww -S -t slide-left -d 1.5 ~/wallpapers/
 - **dissolve** - Random pixel dissolve effect
 - **pixelate** - Pixelate transition with mosaic effect
 
-### Transition Performance
+### FPS Control
 
-Control the smoothness vs performance trade-off with the FPS option:
-- **15 FPS** - Lower CPU usage, good for older systems
-- **30 FPS** (default) - Balanced smoothness and performance
-- **60 FPS** - Silky smooth transitions, higher CPU usage
-- **120 FPS** - Ultra-smooth transitions, highest CPU usage
+Trade-off between smoothness and performance:
+- **15 FPS** - Lower CPU, good for older systems
+- **30 FPS** (default) - Balanced
+- **60 FPS** - Smooth, higher CPU
+- **120 FPS** - Ultra-smooth, highest CPU
 
 ```bash
 # Smooth 60 FPS fade
@@ -239,50 +220,34 @@ ww -S -t fade -d 2.0 -f 60 ~/wallpapers/
 ww -S -t fade -d 2.0 -f 15 ~/wallpapers/
 ```
 
-## Image Quality
+## Scaling Quality
 
-**High-Quality Scaling:**
-- **Bicubic interpolation** for smooth, high-quality scaling
-- **Bilinear fallback** for extreme scale factors
-- Much better quality than nearest-neighbor scaling
-- No pixelation or jagged edges
-
-**Performance:**
-- Optimized scaling algorithms
-- Smart scaling selection based on scale factor
-- Efficient memory usage
+Uses bicubic interpolation for high-quality scaling (bilinear for extreme scale factors). Way better than nearest-neighbor - no jagged edges or pixelation.
 
 ## Performance
 
-Built with performance in mind:
-- **Bicubic/bilinear scaling** for best image quality
-- Zero-copy operations where possible
-- SIMD optimizations enabled in release builds
-- Link-time optimization (LTO)
-- No exceptions/RTTI overhead
-- Efficient memory management
-- **60 FPS transitions** with configurable frame rate
-- GPU acceleration planned (see GPU_ACCELERATION.md)
+- Bicubic/bilinear scaling for quality
+- SIMD optimizations in release builds
+- LTO enabled
+- 60 FPS transitions (configurable)
 
-### Transition Performance
-- 1920x1080 @ 60 FPS: ~5-10% CPU
-- 2560x1600 @ 60 FPS: ~10-15% CPU
-- 3840x2160 @ 60 FPS: ~40-50% CPU
-- Adjustable FPS for performance tuning
+Rough CPU usage at 60 FPS:
+- 1080p: ~5-10%
+- 1600p: ~10-15%
+- 4K: ~40-50%
 
-## Supported Compositors
+## Compositor Support
 
-Currently supports Wayland compositors that implement:
-- `wlr-layer-shell-unstable-v1` (wlroots-based compositors)
+Works with wlroots-based compositors (needs `wlr-layer-shell-unstable-v1`).
 
 ## Contributing
 
-Contributions welcome! This project aims to be the fastest and most feature-complete Wayland wallpaper setter.
+PRs welcome!
 
 ## License
 
 See LICENSE file for details.
 
-## Acknowledgments
+## Thanks
 
-- Inspired by existing tools like swaybg, awww, mpvpaper, and the billion other ones. I am one in a krillion.
+Inspired by swaybg, awww, mpvpaper, and the billion other wallpaper setters out there.

@@ -9,10 +9,6 @@
 #include <string>
 #include <algorithm>
 
-// ============================================================================
-// Error Handling
-// ============================================================================
-
 static thread_local char error_buffer[256] = {0};
 
 void set_error(const char *msg) {
@@ -23,33 +19,26 @@ const char *ww_get_error(void) {
     return error_buffer;
 }
 
-// ============================================================================
-// File Type Detection
-// ============================================================================
-
 ww_filetype_t ww_detect_filetype(const char *path) {
     if (!path) {
         set_error("NULL path provided");
         return WW_TYPE_UNKNOWN;
     }
 
-    // Check file exists
     struct stat st;
     if (stat(path, &st) != 0) {
         set_error("File does not exist");
         return WW_TYPE_UNKNOWN;
     }
 
-    // Simple extension-based detection
     const char *ext = strrchr(path, '.');
     if (!ext) {
         set_error("No file extension found");
         return WW_TYPE_UNKNOWN;
     }
 
-    ext++; // Skip the dot
+    ext++;
 
-    // Case-insensitive comparison
     if (strcasecmp(ext, "png") == 0) {
         return WW_TYPE_PNG;
     } else if (strcasecmp(ext, "jpg") == 0 || strcasecmp(ext, "jpeg") == 0) {
@@ -81,18 +70,11 @@ ww_filetype_t ww_detect_filetype(const char *path) {
     return WW_TYPE_UNKNOWN;
 }
 
-// ============================================================================
-// Directory Scanning
-// ============================================================================
-
-// Helper function to check if a file is a supported image format
 static bool is_supported_image(const char *filename) {
-    // Use existing filetype detection
     ww_filetype_t type = ww_detect_filetype(filename);
     return type != WW_TYPE_UNKNOWN;
 }
 
-// Recursive directory scanning helper
 static void scan_directory_recursive(const char *dir_path, std::vector<std::string> &files, bool recursive) {
     DIR *dir = opendir(dir_path);
     if (!dir) {
@@ -101,25 +83,20 @@ static void scan_directory_recursive(const char *dir_path, std::vector<std::stri
     
     struct dirent *entry;
     while ((entry = readdir(dir)) != nullptr) {
-        // Skip . and ..
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
             continue;
         }
         
-        // Build full path
         std::string full_path = std::string(dir_path) + "/" + entry->d_name;
         
-        // Check if it's a directory or file
         struct stat st;
         if (stat(full_path.c_str(), &st) != 0) {
             continue;
         }
         
         if (S_ISDIR(st.st_mode) && recursive) {
-            // Recursively scan subdirectories
             scan_directory_recursive(full_path.c_str(), files, recursive);
         } else if (S_ISREG(st.st_mode) && is_supported_image(entry->d_name)) {
-            // Add supported image files
             files.push_back(full_path);
         }
     }
@@ -127,14 +104,12 @@ static void scan_directory_recursive(const char *dir_path, std::vector<std::stri
     closedir(dir);
 }
 
-// Public API for directory scanning
 int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recursive) {
     if (!dir_path || !file_list) {
         set_error("NULL pointer provided");
         return -1;
     }
     
-    // Check if directory exists
     struct stat st;
     if (stat(dir_path, &st) != 0) {
         set_error("Directory does not exist");
@@ -146,7 +121,6 @@ int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recu
         return -1;
     }
     
-    // Scan directory
     std::vector<std::string> files;
     scan_directory_recursive(dir_path, files, recursive);
     
@@ -155,10 +129,8 @@ int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recu
         return -1;
     }
     
-    // Sort files alphabetically for consistent ordering
     std::sort(files.begin(), files.end());
     
-    // Allocate and copy file paths
     file_list->count = files.size();
     file_list->paths = (char **)malloc(sizeof(char *) * files.size());
     
@@ -170,7 +142,6 @@ int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recu
     for (size_t i = 0; i < files.size(); i++) {
         file_list->paths[i] = strdup(files[i].c_str());
         if (!file_list->paths[i]) {
-            // Clean up on failure
             for (size_t j = 0; j < i; j++) {
                 free(file_list->paths[j]);
             }
@@ -183,7 +154,6 @@ int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recu
     return 0;
 }
 
-// Free file list
 void ww_free_file_list(ww_file_list_t *file_list) {
     if (!file_list) {
         return;
