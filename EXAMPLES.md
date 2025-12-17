@@ -1,354 +1,491 @@
 # ww - Usage Examples
 
-This document provides practical examples of using `ww` wallpaper setter.
+Advanced usage patterns and real-world examples for power users.
 
 ## Table of Contents
 
-- [Basic Usage](#basic-usage)
-- [Directory Scanning](#directory-scanning)
-- [Slideshow Mode](#slideshow-mode)
-- [Transitions](#transitions)
-- [Advanced Examples](#advanced-examples)
+- [Slideshow Patterns](#slideshow-patterns)
+- [Multi-Monitor Setups](#multi-monitor-setups)
+- [Transition Showcase](#transition-showcase)
+- [Workflow Integration](#workflow-integration)
+- [Creative Use Cases](#creative-use-cases)
 
-## Basic Usage
+---
 
-### Set a single wallpaper
+## Slideshow Patterns
 
-```bash
-# Simple wallpaper
-ww ~/Pictures/wallpaper.png
-
-# Specific output
-ww -o DP-1 ~/Pictures/wallpaper.jpg
-
-# With scaling mode
-ww --mode fill ~/Pictures/landscape.jpg
-ww --mode center ~/Pictures/logo.png
-```
-
-### Solid colors
+### Professional Setup
 
 ```bash
-# Set solid color background
-ww --color '#282828'
-ww --color '#FF5733'
-ww --color '#1E1E2EFF'  # With alpha channel
-```
-
-### Animated wallpapers
-
-```bash
-# Loop a video
-ww --loop ~/Videos/animated.mp4
-
-# Play GIF
-ww --loop ~/Pictures/animated.gif
-```
-
-## Directory Scanning
-
-### Scan a directory
-
-```bash
-# Scan directory (non-recursive)
-ww -S ~/Pictures/wallpapers/
-
-# The above will find all supported image formats in the directory:
-# PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld, GIF, MP4, WebM
-```
-
-### Recursive scanning
-
-```bash
-# Scan directory and all subdirectories
-ww -S -R ~/Pictures/wallpapers/
-
-# Example directory structure:
-# ~/Pictures/wallpapers/
-# ├── nature/
-# │   ├── forest.jpg
-# │   └── ocean.png
-# ├── abstract/
-# │   ├── colors.webp
-# │   └── shapes.png
-# └── urban/
-#     └── city.jpg
-#
-# All 5 images will be loaded with -R flag
-```
-
-### Mix files and directories
-
-```bash
-# Combine explicit files with directory scanning
-ww -S ~/Pictures/favorite.jpg ~/Pictures/wallpapers/
-
-# With recursive scanning
-ww -S -R ~/Pictures/favorites/ ~/Pictures/wallpapers/ ~/Downloads/bg.png
-```
-
-## Slideshow Mode
-
-### Basic slideshow
-
-```bash
-# Default interval (5 minutes)
-ww -S image1.jpg image2.png image3.webp
-
-# Custom interval (60 seconds)
-ww -S -i 60 *.jpg
-
-# Short interval for testing (10 seconds)
-ww -S -i 10 ~/Pictures/*.png
-```
-
-### Random order
-
-```bash
-# Shuffle the images
-ww -S -r ~/Pictures/wallpapers/
-
-# Random with custom interval
-ww -S -r -i 120 ~/Pictures/*.jpg
-```
-
-### Directory slideshow
-
-```bash
-# Slideshow from directory (alphabetical order)
-ww -S ~/Pictures/wallpapers/
-
-# Random slideshow from recursive scan
-ww -S -R -r ~/Pictures/
-
-# Specific subdirectory patterns
-ww -S ~/Pictures/nature/ ~/Pictures/abstract/
-```
-
-## Transitions
-
-### Fade transition (default)
-
-```bash
-# Default fade (1 second)
-ww -S -t fade ~/Pictures/wallpapers/
-
-# Slow fade (3 seconds)
-ww -S -t fade -d 3.0 ~/Pictures/*.jpg
-
-# Quick fade (0.5 seconds)
-ww -S -t fade -d 0.5 -i 30 ~/Pictures/wallpapers/
-```
-
-### Slide transitions
-
-```bash
-# Slide from right to left
-ww -S -t slide-left -d 1.5 ~/Pictures/*.png
-
-# Slide from left to right
-ww -S -t slide-right -d 1.0 ~/Pictures/wallpapers/
-
-# Slide from bottom to top
-ww -S -t slide-up -d 1.2 ~/Pictures/*.jpg
-
-# Slide from top to bottom
-ww -S -t slide-down -d 0.8 ~/Pictures/wallpapers/
-```
-
-### No transition
-
-```bash
-# Instant switch, no transition
-ww -S -t none -i 60 ~/Pictures/*.jpg
-```
-
-## Advanced Examples
-
-### Professional slideshow setup
-
-```bash
-# Elegant fade slideshow every 10 minutes
+# Daily rotation with elegant fade
 ww -S -R -t fade -d 2.0 -i 600 ~/Pictures/Wallpapers/
 
-# Gallery-style rapid slideshow with quick fade
-ww -S -r -t fade -d 0.3 -i 5 ~/Pictures/Portfolio/
+# Work environment - minimal distraction
+ww -S -R -t fade -d 1.0 -i 3600 ~/Pictures/Wallpapers/Minimal/
+
+# Home office - change with natural light
+# Morning (6 AM - run via cron)
+ww -S -R -t fade -d 2.0 ~/Pictures/Wallpapers/Bright/
+
+# Evening (6 PM - run via cron)
+ww -S -R -t fade -d 3.0 ~/Pictures/Wallpapers/Dark/
 ```
 
-### Event/mood-based wallpapers
+### Gallery & Presentation
 
 ```bash
-# Morning wallpapers - bright and energetic
-ww -S -R -t slide-right -d 1.5 -i 300 ~/Pictures/Wallpapers/Morning/
-
-# Evening wallpapers - calm and dark
-ww -S -R -t fade -d 3.0 -i 600 ~/Pictures/Wallpapers/Evening/
-
-# Work wallpapers - minimal and focused
-ww -S -t fade -d 1.0 -i 7200 ~/Pictures/Wallpapers/Minimal/
-```
-
-### Multi-monitor setup
-
-```bash
-# Different wallpaper per output
-ww -o DP-1 ~/Pictures/left.jpg &
-ww -o DP-2 ~/Pictures/right.jpg &
-
-# Slideshow on specific output
-ww -o HDMI-1 -S -R ~/Pictures/wallpapers/
-```
-
-### Performance-optimized
-
-```bash
-# No transition for better performance
-ww -S -t none -i 300 ~/Pictures/4k/
-
-# Quick transitions with longer intervals
-ww -S -t fade -d 0.5 -i 600 ~/Pictures/wallpapers/
-```
-
-### Combined with scaling modes
-
-```bash
-# Fill mode with fade transitions
-ww -S -m fill -t fade -d 2.0 ~/Pictures/*.jpg
-
-# Center mode with letterbox color and fade
-ww -S -m center -c '#1E1E2E' -t fade -d 1.5 ~/Pictures/logos/
-
-# Tile mode slideshow (for patterns)
-ww -S -m tile -t fade -d 1.0 ~/Pictures/patterns/
-```
-
-### Testing transitions
-
-```bash
-# Test all transition types with short intervals
-ww -S -t fade -d 2.0 -i 5 test1.jpg test2.jpg test3.jpg
-ww -S -t slide-left -d 1.5 -i 5 test1.jpg test2.jpg test3.jpg
-ww -S -t slide-right -d 1.5 -i 5 test1.jpg test2.jpg test3.jpg
-ww -S -t slide-up -d 1.0 -i 5 test1.jpg test2.jpg test3.jpg
-ww -S -t slide-down -d 1.0 -i 5 test1.jpg test2.jpg test3.jpg
-```
-
-### Creative uses
-
-```bash
-# Art gallery mode - slow fade between artworks
+# Art gallery - slow, random with long fade
 ww -S -R -r -t fade -d 4.0 -i 180 ~/Pictures/Art/
 
-# Screensaver mode - rapid random transitions
-ww -S -r -t fade -d 0.2 -i 3 ~/Pictures/Screensaver/
+# Portfolio showcase - quick preview
+ww -S -r -t fade -d 0.5 -i 5 ~/Portfolio/
 
-# Presentation mode - manual-like slide transitions
+# Presentation slides with slide transition
 ww -S -t slide-left -d 0.8 -i 30 ~/Presentations/slides/
 
-# Ambient mode - very long intervals with gentle fades
-ww -S -t fade -d 5.0 -i 3600 ~/Pictures/Ambient/
+# Ambient background - very long intervals
+ww -S -R -t fade -d 5.0 -i 3600 ~/Pictures/Ambient/
 ```
 
-## Tips and Tricks
-
-### 1. Organize your wallpapers
+### Mood-Based Themes
 
 ```bash
-~/Pictures/Wallpapers/
-├── Nature/
-├── Abstract/
-├── Minimal/
-├── Dark/
-└── Bright/
+# Focus mode - single minimal wallpaper, no distraction
+ww --mode fill ~/Pictures/minimal-dark.png
 
-# Then use:
-ww -S -R ~/Pictures/Wallpapers/Nature/  # Nature theme
-ww -S -R ~/Pictures/Wallpapers/Dark/    # Dark theme
+# Creative mode - colorful, rapid rotation
+ww -S -R -r -t slide-left -d 1.0 -i 60 ~/Pictures/Colorful/
+
+# Relax mode - nature scenes, slow fade
+ww -S -R -t fade -d 3.0 -i 900 ~/Pictures/Nature/
 ```
 
-### 2. Use shell aliases
+---
 
-Add to your `.bashrc` or `.zshrc`:
+## Multi-Monitor Setups
+
+### Different Wallpapers Per Monitor
 
 ```bash
-# Quick slideshow with fade
-alias ww-slideshow='ww -S -R -t fade -d 2.0 -i 300'
+# List available outputs
+ww --list-outputs
 
-# Random rapid slideshow
-alias ww-random='ww -S -R -r -t fade -d 1.0 -i 60'
-
-# Work wallpapers
-alias ww-work='ww -S -R -t fade -d 1.5 -i 600 ~/Pictures/Wallpapers/Work/'
-
-# Evening mode
-alias ww-evening='ww -S -R -t fade -d 3.0 -i 900 ~/Pictures/Wallpapers/Dark/'
+# Set different wallpapers
+ww -o DP-1 ~/Pictures/left-monitor.jpg &
+ww -o DP-2 ~/Pictures/center-monitor.jpg &
+ww -o HDMI-1 ~/Pictures/right-monitor.jpg &
 ```
 
-### 3. Combine with other tools
+### Synced Slideshows Across Monitors
 
 ```bash
-# Start with system startup (add to your compositor config)
+# Same slideshow on all outputs (default behavior)
+ww -S -R -t fade -d 2.0 ~/Pictures/Wallpapers/
+
+# Different themes per monitor
+ww -o DP-1 -S -R ~/Pictures/Tech/ &
+ww -o DP-2 -S -R ~/Pictures/Nature/ &
+```
+
+### Portrait vs Landscape Optimization
+
+```bash
+# Organize by orientation
+mkdir -p ~/Pictures/Wallpapers/portrait
+mkdir -p ~/Pictures/Wallpapers/landscape
+
+# Set based on monitor orientation
+ww -o DP-1 -S -R ~/Pictures/Wallpapers/landscape/  # Landscape monitor
+ww -o DP-2 -S -R ~/Pictures/Wallpapers/portrait/   # Portrait monitor
+```
+
+---
+
+## Transition Showcase
+
+### Testing All Transitions
+
+```bash
+# Create test sequence with 2 contrasting images
+IMG1=~/Pictures/dark.jpg
+IMG2=~/Pictures/light.jpg
+
+# Fade (smooth crossfade)
+ww -S -t fade -d 2.0 -i 5 "$IMG1" "$IMG2"
+
+# Slide transitions (directional)
+ww -S -t slide-left -d 1.5 -i 5 "$IMG1" "$IMG2"
+ww -S -t slide-right -d 1.5 -i 5 "$IMG1" "$IMG2"
+ww -S -t slide-up -d 1.2 -i 5 "$IMG1" "$IMG2"
+ww -S -t slide-down -d 1.2 -i 5 "$IMG1" "$IMG2"
+
+# No transition (instant)
+ww -S -t none -i 3 "$IMG1" "$IMG2"
+```
+
+### Transition Speed Comparison
+
+```bash
+# Ultra-fast (0.3s) - snappy, modern feel
+ww -S -t fade -d 0.3 -i 10 ~/Pictures/*.jpg
+
+# Standard (1.0s) - balanced
+ww -S -t fade -d 1.0 -i 10 ~/Pictures/*.jpg
+
+# Slow (3.0s) - dramatic, cinematic
+ww -S -t fade -d 3.0 -i 10 ~/Pictures/*.jpg
+
+# Very slow (5.0s) - ambient, meditative
+ww -S -t fade -d 5.0 -i 10 ~/Pictures/*.jpg
+```
+
+### Context-Appropriate Transitions
+
+```bash
+# Photo gallery - fade for elegance
+ww -S -R -t fade -d 2.0 ~/Pictures/Photos/
+
+# UI mockups - slide for context
+ww -S -t slide-left -d 1.0 ~/Design/mockups/
+
+# Quick preview - none for speed
+ww -S -t none ~/Pictures/test/
+
+# Ambient display - slow fade for calm
+ww -S -t fade -d 4.0 -i 600 ~/Pictures/Ambient/
+```
+
+---
+
+## Workflow Integration
+
+### Compositor Auto-Start
+
+**Sway** (`~/.config/sway/config`):
+```
 exec ww -S -R -t fade -d 2.0 -i 300 ~/Pictures/Wallpapers/
+```
 
-# Time-based wallpapers (using cron or systemd timers)
-# Morning (6 AM)
+**Hyprland** (`~/.config/hypr/hyprland.conf`):
+```
+exec-once = ww -S -R -t fade -d 2.0 -i 300 ~/Pictures/Wallpapers/
+```
+
+**River** (`~/.config/river/init`):
+```sh
+ww -S -R -t fade -d 2.0 -i 300 ~/Pictures/Wallpapers/ &
+```
+
+### Shell Aliases
+
+Add to `~/.bashrc` or `~/.zshrc`:
+
+```bash
+# Quick wallpaper commands
+alias wp='ww'
+alias wps='ww -S -R -t fade -d 2.0 -i 300'  # Standard slideshow
+alias wpr='ww -S -R -r -t fade -d 1.5 -i 120'  # Random slideshow
+alias wpq='ww -S -R -t fade -d 0.5 -i 5'  # Quick preview
+
+# Theme switching
+alias wp-dark='ww -S -R ~/Pictures/Wallpapers/Dark/'
+alias wp-light='ww -S -R ~/Pictures/Wallpapers/Light/'
+alias wp-minimal='ww -S -R ~/Pictures/Wallpapers/Minimal/'
+alias wp-nature='ww -S -R ~/Pictures/Wallpapers/Nature/'
+
+# Quick solid colors
+alias wp-black='ww --color "#000000"'
+alias wp-gray='ww --color "#282828"'
+alias wp-nord='ww --color "#2E3440"'
+```
+
+### Time-Based Wallpapers (Cron)
+
+Edit with `crontab -e`:
+
+```cron
+# Morning wallpapers (6 AM)
 0 6 * * * ww -S -R ~/Pictures/Wallpapers/Morning/
-# Evening (6 PM)
+
+# Afternoon wallpapers (12 PM)
+0 12 * * * ww -S -R ~/Pictures/Wallpapers/Bright/
+
+# Evening wallpapers (6 PM)
 0 18 * * * ww -S -R ~/Pictures/Wallpapers/Evening/
+
+# Night wallpapers (10 PM)
+0 22 * * * ww -S -R ~/Pictures/Wallpapers/Dark/
 ```
 
-### 4. Performance considerations
+### Systemd Timer (Alternative to Cron)
 
-- For 4K displays, consider longer transition durations (2-3 seconds)
-- Use `none` transition for very large images or slower systems
-- Recursive scanning of large directories may take time initially
-- Images are loaded on-demand during slideshow for memory efficiency
+**Service file** (`~/.config/systemd/user/wallpaper.service`):
+```ini
+[Unit]
+Description=Wallpaper Slideshow
 
-### 5. Supported format combinations
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ww -S -R -t fade -d 2.0 -i 300 %h/Pictures/Wallpapers/
+Restart=on-failure
 
-```bash
-# Mix different formats freely
-ww -S *.png *.jpg *.webp *.jxl *.gif
-
-# Include videos in slideshow (will play once per interval)
-ww -S -i 30 *.mp4 *.webm *.gif
-
-# Recursively find all formats
-ww -S -R ~/Pictures/  # Automatically finds all supported formats
+[Install]
+WantedBy=default.target
 ```
 
-## Troubleshooting
-
-### Directory has no images
-
+Enable and start:
 ```bash
-# Error: No supported image files found in directory
-# Solution: Check if the directory contains supported formats
-ls ~/Pictures/wallpapers/  # Verify files exist
-ww -S -R ~/Pictures/wallpapers/  # Try recursive scan
+systemctl --user enable --now wallpaper.service
 ```
 
-### Transitions not smooth
+---
+
+## Creative Use Cases
+
+### Dynamic Desktop Environment
 
 ```bash
-# Try shorter transition duration
+# Organize wallpapers by mood/context
+~/Pictures/Wallpapers/
+├── focus/        # Minimal, distraction-free
+├── creative/     # Colorful, inspiring
+├── relax/        # Calm, nature scenes
+└── energetic/    # Bright, vibrant
+
+# Switch based on activity
+ww -S -R ~/Pictures/Wallpapers/focus/      # Deep work
+ww -S -R ~/Pictures/Wallpapers/creative/   # Design/art
+ww -S -R ~/Pictures/Wallpapers/relax/      # Breaks
+```
+
+### Photography Portfolio Display
+
+```bash
+# Showcase your work on idle displays
+ww -S -r -t fade -d 3.0 -i 30 ~/Photography/Portfolio/
+
+# Client presentation mode
+ww -S -t slide-left -d 1.0 -i 15 ~/Photography/Client-Preview/
+
+# Exhibition mode - slow, random
+ww -S -r -t fade -d 5.0 -i 120 ~/Photography/Exhibition/
+```
+
+### Digital Signage
+
+```bash
+# Restaurant menu boards
+ww -S -t slide-left -d 1.0 -i 10 ~/Signage/Menu/
+
+# Retail displays
+ww -S -t fade -d 2.0 -i 15 ~/Signage/Products/
+
+# Information kiosk
+ww -S -t fade -d 3.0 -i 20 ~/Signage/Info/
+
+# Event displays
+ww -S -t slide-left -d 1.5 -i 8 ~/Events/Sponsors/
+```
+
+### Screensaver Mode
+
+```bash
+# Rapid random transitions for visual interest
+ww -S -r -t fade -d 0.3 -i 5 ~/Pictures/Screensaver/
+
+# Slow ambient mode
+ww -S -r -t fade -d 4.0 -i 30 ~/Pictures/Ambient/
+```
+
+### Testing & Development
+
+```bash
+# Quick format test
+ww -S -i 2 test.png test.jpg test.webp test.jxl test.tiff
+
+# Transition development testing
+for t in fade slide-left slide-right slide-up slide-down none; do
+    echo "Testing: $t"
+    ww -S -t $t -d 1.0 -i 3 img1.jpg img2.jpg
+    sleep 10
+done
+
+# Performance testing
+time ww -S -t fade -d 1.0 -i 2 ~/Pictures/4k/*.jpg
+```
+
+---
+
+## Advanced Techniques
+
+### Conditional Wallpapers
+
+```bash
+#!/bin/bash
+# Set wallpaper based on time of day
+
+hour=$(date +%H)
+
+if [ $hour -ge 6 ] && [ $hour -lt 12 ]; then
+    ww -S -R ~/Pictures/Wallpapers/Morning/
+elif [ $hour -ge 12 ] && [ $hour -lt 18 ]; then
+    ww -S -R ~/Pictures/Wallpapers/Day/
+elif [ $hour -ge 18 ] && [ $hour -lt 22 ]; then
+    ww -S -R ~/Pictures/Wallpapers/Evening/
+else
+    ww -S -R ~/Pictures/Wallpapers/Night/
+fi
+```
+
+### Battery-Aware Performance
+
+```bash
+#!/bin/bash
+# Adjust transition quality based on battery
+
+if [ -f /sys/class/power_supply/BAT0/status ]; then
+    status=$(cat /sys/class/power_supply/BAT0/status)
+    
+    if [ "$status" = "Discharging" ]; then
+        # Battery mode - no transitions, longer intervals
+        ww -S -R -t none -i 600 ~/Pictures/Wallpapers/
+    else
+        # AC power - full quality
+        ww -S -R -t fade -d 2.0 -i 300 ~/Pictures/Wallpapers/
+    fi
+else
+    # Desktop - full quality
+    ww -S -R -t fade -d 2.0 -i 300 ~/Pictures/Wallpapers/
+fi
+```
+
+### Directory Organization Best Practices
+
+```bash
+# Organize by resolution
+~/Pictures/Wallpapers/
+├── 1080p/
+├── 1440p/
+└── 4k/
+
+# Organize by orientation
+~/Pictures/Wallpapers/
+├── landscape/
+├── portrait/
+└── ultrawide/
+
+# Organize by category
+~/Pictures/Wallpapers/
+├── Abstract/
+├── Anime/
+├── Art/
+├── Minimal/
+├── Nature/
+├── Space/
+└── Urban/
+
+# Use appropriate directories
+ww -S -R ~/Pictures/Wallpapers/4k/         # 4K display
+ww -S -R ~/Pictures/Wallpapers/landscape/  # Landscape monitor
+ww -S -R ~/Pictures/Wallpapers/Nature/     # Nature theme
+```
+
+---
+
+## Performance Tips
+
+### High-Resolution Displays
+
+```bash
+# For 4K displays, use longer transitions
+ww -S -t fade -d 2.0 -i 300 ~/Pictures/4k/
+
+# Or disable transitions for maximum performance
+ww -S -t none -i 300 ~/Pictures/4k/
+
+# Longer intervals reduce CPU usage
+ww -S -t fade -d 1.0 -i 600 ~/Pictures/4k/
+```
+
+### Large Image Collections
+
+```bash
+# Recursive scan is one-time cost at startup
+ww -S -R -t fade -d 2.0 -i 300 ~/Pictures/
+
+# Images loaded on-demand, not all at once
+# Safe for directories with thousands of images
+
+# Random mode has negligible overhead
+ww -S -R -r -t fade -d 2.0 ~/Pictures/
+```
+
+### Low-End Systems
+
+```bash
+# Disable transitions
+ww -S -R -t none ~/Pictures/Wallpapers/
+
+# Use longer intervals
+ww -S -R -t none -i 600 ~/Pictures/Wallpapers/
+
+# Smaller images/resolutions
+ww -S -R -t none ~/Pictures/Wallpapers/1080p/
+```
+
+---
+
+## Troubleshooting Examples
+
+### Testing Specific Formats
+
+```bash
+# Test individual format support
+ww test.png    # PNG
+ww test.jpg    # JPEG
+ww test.webp   # WebP
+ww test.jxl    # JPEG XL
+ww test.tiff   # TIFF
+
+# Test animated formats
+ww --loop test.gif     # GIF
+ww --loop test.mp4     # MP4
+ww --loop test.webm    # WebM
+```
+
+### Debugging Directory Scans
+
+```bash
+# Verify directory has supported images
+ls ~/Pictures/Wallpapers/
+
+# Test non-recursive first
+ww -S ~/Pictures/Wallpapers/
+
+# Then test recursive
+ww -S -R ~/Pictures/Wallpapers/
+
+# Check permissions
+ls -la ~/Pictures/Wallpapers/
+```
+
+### Transition Issues
+
+```bash
+# Try shorter duration
 ww -S -t fade -d 0.5 ~/Pictures/*.jpg
 
-# Or use no transition
+# Try different transition type
 ww -S -t none ~/Pictures/*.jpg
+
+# Test with just 2 images
+ww -S -t fade -d 1.0 -i 5 img1.jpg img2.jpg
 ```
 
-### Slideshow too fast/slow
-
-```bash
-# Adjust interval (-i flag in seconds)
-ww -S -i 60 ~/Pictures/*.jpg    # 1 minute
-ww -S -i 300 ~/Pictures/*.jpg   # 5 minutes
-ww -S -i 3600 ~/Pictures/*.jpg  # 1 hour
-```
+---
 
 ## More Information
 
-- See `ww --help` for all options
-- Check `README.md` for installation and building instructions
-- Visit the project repository for latest updates
+- Run `ww --help` for all options
+- Check `README.md` for installation and build instructions
+- Visit the repository for updates and issue tracking
