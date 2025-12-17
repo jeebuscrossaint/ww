@@ -40,9 +40,9 @@ target("ww")
     -- Additional useful libs
     add_syslinks("pthread", "m", "wayland-client", "avcodec", "avformat", "avutil", "swscale")
 
-    -- Link the protocol object files
-    add_files("build/protocols/wlr-layer-shell-unstable-v1-protocol.c", {force = {cxflags = ""}})
-    add_files("build/protocols/xdg-shell-protocol.c", {force = {cxflags = ""}})
+    -- Link the protocol object files (compile as C, not C++)
+    add_files("build/protocols/wlr-layer-shell-unstable-v1-protocol.c", {languages = "c"})
+    add_files("build/protocols/xdg-shell-protocol.c", {languages = "c"})
 
     -- Compiler flags
     add_cxxflags("-Wall", "-Wextra", "-Wpedantic")

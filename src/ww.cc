@@ -4,6 +4,10 @@
 #include <cstdlib>
 #include <cstdio>
 #include <sys/stat.h>
+#include <dirent.h>
+#include <vector>
+#include <string>
+#include <algorithm>
 
 // Error handling
 static thread_local char error_buffer[256] = {0};
@@ -69,6 +73,145 @@ ww_filetype_t ww_detect_filetype(const char *path) {
 
     set_error("Unsupported file extension");
     return WW_TYPE_UNKNOWN;
+}
+
+// Helper function to check if a file is a supported image format
+static bool is_supported_image(const char *filename) {
+    const char *ext = strrchr(filename, '.');
+    if (!ext) return false;
+    
+    ext++; // Skip the dot
+    
+    // Check against all supported formats
+    return (strcasecmp(ext, "png") == 0 ||
+            strcasecmp(ext, "jpg") == 0 ||
+            strcasecmp(ext, "jpeg") == 0 ||
+            strcasecmp(ext, "webp") == 0 ||
+            strcasecmp(ext, "bmp") == 0 ||
+            strcasecmp(ext, "tga") == 0 ||
+            strcasecmp(ext, "pnm") == 0 ||
+            strcasecmp(ext, "pbm") == 0 ||
+            strcasecmp(ext, "pgm") == 0 ||
+            strcasecmp(ext, "ppm") == 0 ||
+            strcasecmp(ext, "tiff") == 0 ||
+            strcasecmp(ext, "tif") == 0 ||
+            strcasecmp(ext, "jxl") == 0 ||
+            strcasecmp(ext, "ff") == 0 ||
+            strcasecmp(ext, "gif") == 0 ||
+            strcasecmp(ext, "mp4") == 0 ||
+            strcasecmp(ext, "webm") == 0);
+}
+
+// Recursive directory scanning helper
+static void scan_directory_recursive(const char *dir_path, std::vector<std::string> &files, bool recursive) {
+    DIR *dir = opendir(dir_path);
+    if (!dir) {
+        return;
+    }
+    
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        // Skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        
+        // Build full path
+        std::string full_path = std::string(dir_path) + "/" + entry->d_name;
+        
+        // Check if it's a directory or file
+        struct stat st;
+        if (stat(full_path.c_str(), &st) != 0) {
+            continue;
+        }
+        
+        if (S_ISDIR(st.st_mode)) {
+            // Recursively scan subdirectories if requested
+            if (recursive) {
+                scan_directory_recursive(full_path.c_str(), files, recursive);
+            }
+        } else if (S_ISREG(st.st_mode)) {
+            // Check if it's a supported image format
+            if (is_supported_image(entry->d_name)) {
+                files.push_back(full_path);
+            }
+        }
+    }
+    
+    closedir(dir);
+}
+
+// Directory scanning implementation
+int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recursive) {
+    if (!dir_path || !file_list) {
+        set_error("NULL pointer provided");
+        return -1;
+    }
+    
+    // Check if directory exists
+    struct stat st;
+    if (stat(dir_path, &st) != 0) {
+        set_error("Directory does not exist");
+        return -1;
+    }
+    
+    if (!S_ISDIR(st.st_mode)) {
+        set_error("Path is not a directory");
+        return -1;
+    }
+    
+    // Scan directory
+    std::vector<std::string> files;
+    scan_directory_recursive(dir_path, files, recursive);
+    
+    if (files.empty()) {
+        set_error("No supported image files found in directory");
+        return -1;
+    }
+    
+    // Sort files alphabetically for consistent ordering
+    std::sort(files.begin(), files.end());
+    
+    // Allocate and copy file paths
+    file_list->count = files.size();
+    file_list->paths = (char **)malloc(sizeof(char *) * files.size());
+    
+    if (!file_list->paths) {
+        set_error("Memory allocation failed");
+        return -1;
+    }
+    
+    for (size_t i = 0; i < files.size(); i++) {
+        file_list->paths[i] = strdup(files[i].c_str());
+        if (!file_list->paths[i]) {
+            // Clean up on failure
+            for (size_t j = 0; j < i; j++) {
+                free(file_list->paths[j]);
+            }
+            free(file_list->paths);
+            set_error("Memory allocation failed");
+            return -1;
+        }
+    }
+    
+    return 0;
+}
+
+// Free file list
+void ww_free_file_list(ww_file_list_t *file_list) {
+    if (!file_list) {
+        return;
+    }
+    
+    if (file_list->paths) {
+        for (int i = 0; i < file_list->count; i++) {
+            free(file_list->paths[i]);
+        }
+        free(file_list->paths);
+    }
+    
+    file_list->paths = nullptr;
+    file_list->count = 0;
 }
 
 // Wayland initialization, output listing, and wallpaper setting

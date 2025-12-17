@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <time.h>
+#include <poll.h>
 
 #include <wayland-client.h>
 
@@ -51,6 +53,12 @@ struct ww_output {
     struct wl_callback *frame_callback;
     
     bool configured;
+    
+    // Transition state
+    ww_transition_state *transition;
+    uint8_t *old_buffer_data;
+    size_t old_buffer_size;
+    struct timespec transition_start;
 };
 
 struct ww_buffer {
@@ -71,6 +79,11 @@ extern video_decoder_t *ww_video_create(const char *path, int target_width, int 
 extern image_data_t *ww_video_next_frame(video_decoder_t *decoder);
 extern double ww_video_get_frame_duration(video_decoder_t *decoder);
 extern void ww_video_destroy(video_decoder_t *decoder);
+extern ww_transition_state *ww_transition_create(ww_transition_type_t type, float duration, int width, int height);
+extern void ww_transition_destroy(ww_transition_state *state);
+extern void ww_transition_start(ww_transition_state *state, const uint8_t *old_data, const uint8_t *new_data);
+extern bool ww_transition_update(ww_transition_state *state, float delta_time, uint8_t **output_data);
+extern bool ww_transition_is_active(const ww_transition_state *state);
 
 // Access image data internals
 struct image_data_t {
@@ -213,10 +226,98 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 
 // Frame callback for animations
 static void frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time);
+static void transition_frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time);
 
 static const struct wl_callback_listener frame_listener = {
     .done = frame_callback_handler,
 };
+
+static const struct wl_callback_listener transition_frame_listener = {
+    .done = transition_frame_callback_handler,
+};
+
+// Get time difference in seconds
+static float get_time_diff(const struct timespec *start) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (now.tv_sec - start->tv_sec) + (now.tv_nsec - start->tv_nsec) / 1e9f;
+}
+
+// Transition frame callback
+static void transition_frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time) {
+    struct ww_output *output = (struct ww_output*)data;
+    (void)time;
+    
+    if (callback) {
+        wl_callback_destroy(callback);
+        output->frame_callback = nullptr;
+    }
+    
+    if (!output->transition || !ww_transition_is_active(output->transition)) {
+        // Transition complete, clean up
+        if (output->old_buffer_data) {
+            munmap(output->old_buffer_data, output->old_buffer_size);
+            output->old_buffer_data = nullptr;
+            output->old_buffer_size = 0;
+        }
+        if (output->transition) {
+            ww_transition_destroy(output->transition);
+            output->transition = nullptr;
+        }
+        return;
+    }
+    
+    // Calculate delta time
+    float delta_time = get_time_diff(&output->transition_start);
+    output->transition_start.tv_sec = 0;
+    output->transition_start.tv_nsec = 0;
+    clock_gettime(CLOCK_MONOTONIC, &output->transition_start);
+    
+    // Update transition
+    uint8_t *transition_output = nullptr;
+    bool still_active = ww_transition_update(output->transition, delta_time, &transition_output);
+    
+    if (transition_output && output->buffer_data) {
+        // Copy transition output to buffer (RGBA to BGRA conversion)
+        int pixel_count = output->width * output->height;
+        for (int i = 0; i < pixel_count; i++) {
+            uint8_t r = transition_output[i * 4 + 0];
+            uint8_t g = transition_output[i * 4 + 1];
+            uint8_t b = transition_output[i * 4 + 2];
+            uint8_t a = transition_output[i * 4 + 3];
+            
+            output->buffer_data[i * 4 + 0] = b;
+            output->buffer_data[i * 4 + 1] = g;
+            output->buffer_data[i * 4 + 2] = r;
+            output->buffer_data[i * 4 + 3] = a;
+        }
+        
+        // Attach and commit
+        wl_surface_attach(output->surface, output->buffer, 0, 0);
+        wl_surface_damage_buffer(output->surface, 0, 0, output->width, output->height);
+        
+        if (still_active) {
+            // Setup next frame callback
+            output->frame_callback = wl_surface_frame(output->surface);
+            wl_callback_add_listener(output->frame_callback, &transition_frame_listener, output);
+        }
+        
+        wl_surface_commit(output->surface);
+    }
+    
+    // Clean up if transition is done
+    if (!still_active) {
+        if (output->old_buffer_data) {
+            munmap(output->old_buffer_data, output->old_buffer_size);
+            output->old_buffer_data = nullptr;
+            output->old_buffer_size = 0;
+        }
+        if (output->transition) {
+            ww_transition_destroy(output->transition);
+            output->transition = nullptr;
+        }
+    }
+}
 
 static void update_animated_frame(struct ww_output *output) {
     if (!output || !output->state->video_decoder) {
@@ -565,6 +666,24 @@ int ww_set_wallpaper_no_loop(const ww_config_t *config) {
             continue;
         }
         
+        // Check if we should do a transition
+        bool should_transition = (config->transition != WW_TRANSITION_NONE && 
+                                 config->transition_duration > 0.0f &&
+                                 output->buffer_data != nullptr &&
+                                 output->buffer_size > 0 &&
+                                 !is_animated);
+        
+        // Save old buffer for transition if needed
+        uint8_t *old_buffer_copy = nullptr;
+        if (should_transition) {
+            old_buffer_copy = (uint8_t*)malloc(output->buffer_size);
+            if (old_buffer_copy) {
+                memcpy(old_buffer_copy, output->buffer_data, output->buffer_size);
+            } else {
+                should_transition = false;
+            }
+        }
+        
         // Load image (static or first frame) or create solid color
         image_data_t *img = nullptr;
         
@@ -672,6 +791,75 @@ int ww_set_wallpaper_no_loop(const ww_config_t *config) {
             return -1;
         }
         
+        // Handle transition if requested
+        if (should_transition && old_buffer_copy && 
+            img->width == output->width && img->height == output->height) {
+            
+            // Create new buffer data in RGBA format for transition
+            uint8_t *new_buffer_rgba = (uint8_t*)malloc(img->width * img->height * 4);
+            uint8_t *old_buffer_rgba = (uint8_t*)malloc(img->width * img->height * 4);
+            
+            if (new_buffer_rgba && old_buffer_rgba) {
+                // Copy new image data (already in RGBA)
+                memcpy(new_buffer_rgba, img->data, img->width * img->height * 4);
+                
+                // Convert old buffer from BGRA to RGBA
+                int pixel_count = img->width * img->height;
+                for (int i = 0; i < pixel_count; i++) {
+                    old_buffer_rgba[i * 4 + 0] = old_buffer_copy[i * 4 + 2]; // R
+                    old_buffer_rgba[i * 4 + 1] = old_buffer_copy[i * 4 + 1]; // G
+                    old_buffer_rgba[i * 4 + 2] = old_buffer_copy[i * 4 + 0]; // B
+                    old_buffer_rgba[i * 4 + 3] = old_buffer_copy[i * 4 + 3]; // A
+                }
+                
+                // Create and start transition
+                if (output->transition) {
+                    ww_transition_destroy(output->transition);
+                }
+                
+                output->transition = ww_transition_create(config->transition, 
+                                                         config->transition_duration,
+                                                         img->width, img->height);
+                
+                if (output->transition) {
+                    ww_transition_start(output->transition, old_buffer_rgba, new_buffer_rgba);
+                    clock_gettime(CLOCK_MONOTONIC, &output->transition_start);
+                    
+                    // Copy initial frame (first transition frame)
+                    uint8_t *transition_output = nullptr;
+                    ww_transition_update(output->transition, 0.0f, &transition_output);
+                    
+                    if (transition_output) {
+                        // Convert RGBA to BGRA and copy to buffer
+                        for (int i = 0; i < pixel_count; i++) {
+                            output->buffer_data[i * 4 + 0] = transition_output[i * 4 + 2]; // B
+                            output->buffer_data[i * 4 + 1] = transition_output[i * 4 + 1]; // G
+                            output->buffer_data[i * 4 + 2] = transition_output[i * 4 + 0]; // R
+                            output->buffer_data[i * 4 + 3] = transition_output[i * 4 + 3]; // A
+                        }
+                        
+                        // Start transition animation
+                        wl_surface_attach(output->surface, output->buffer, 0, 0);
+                        wl_surface_damage_buffer(output->surface, 0, 0, img->width, img->height);
+                        output->frame_callback = wl_surface_frame(output->surface);
+                        wl_callback_add_listener(output->frame_callback, &transition_frame_listener, output);
+                        wl_surface_commit(output->surface);
+                    }
+                }
+            }
+            
+            if (new_buffer_rgba) free(new_buffer_rgba);
+            if (old_buffer_rgba) free(old_buffer_rgba);
+            if (old_buffer_copy) free(old_buffer_copy);
+            ww_free_image(img);
+            continue; // Skip normal rendering for this output
+        }
+        
+        if (old_buffer_copy) {
+            free(old_buffer_copy);
+        }
+        
+        // Normal immediate update (no transition)
         // Copy image data to buffer (convert RGBA to ARGB for Wayland)
         for (int i = 0; i < img->width * img->height; i++) {
             uint8_t r = img->data[i * 4 + 0];
@@ -714,6 +902,36 @@ extern "C" void ww_dispatch_events(void) {
     if (!global_state) {
         return;
     }
+    
+    // Prepare to read events
+    while (wl_display_prepare_read(global_state->display) != 0) {
+        wl_display_dispatch_pending(global_state->display);
+    }
+    
+    // Flush outgoing requests
+    wl_display_flush(global_state->display);
+    
+    // Use poll to check if there are events to read (non-blocking)
+    struct pollfd pfd = {
+        .fd = wl_display_get_fd(global_state->display),
+        .events = POLLIN,
+        .revents = 0
+    };
+    
+    // Poll with 0 timeout for non-blocking behavior
+    int ret = poll(&pfd, 1, 0);
+    
+    if (ret > 0 && (pfd.revents & POLLIN)) {
+        // Read events from the file descriptor
+        wl_display_read_events(global_state->display);
+        // Dispatch the events
+        wl_display_dispatch_pending(global_state->display);
+    } else {
+        // Cancel the read
+        wl_display_cancel_read(global_state->display);
+    }
+    
+    // Dispatch any remaining pending events
     wl_display_dispatch_pending(global_state->display);
     wl_display_flush(global_state->display);
 }

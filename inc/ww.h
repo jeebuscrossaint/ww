@@ -80,6 +80,16 @@ typedef enum {
     WW_TRANSITION_SLIDE_RIGHT,
     WW_TRANSITION_SLIDE_UP,
     WW_TRANSITION_SLIDE_DOWN,
+    WW_TRANSITION_ZOOM_IN,
+    WW_TRANSITION_ZOOM_OUT,
+    WW_TRANSITION_CIRCLE_OPEN,
+    WW_TRANSITION_CIRCLE_CLOSE,
+    WW_TRANSITION_WIPE_LEFT,
+    WW_TRANSITION_WIPE_RIGHT,
+    WW_TRANSITION_WIPE_UP,
+    WW_TRANSITION_WIPE_DOWN,
+    WW_TRANSITION_DISSOLVE,
+    WW_TRANSITION_PIXELATE,
 } ww_transition_type_t;
 
 /* Time period for time-based switching */
@@ -110,6 +120,7 @@ typedef struct {
     ww_filter_t *filter;       /* Optional image filter */
     ww_transition_type_t transition;  /* Transition effect */
     float transition_duration; /* Transition duration in seconds */
+    int transition_fps;        /* Target FPS for transitions (default: 30) */
 } ww_config_t;
 
 /* Image data structure (opaque) */
@@ -133,29 +144,6 @@ image_data_t *ww_load_image(const char *path, int output_width, int output_heigh
 image_data_t *ww_load_image_mode(const char *path, int output_width, int output_height, int mode, uint32_t bg_color);
 void ww_free_image(image_data_t *img);
 
-/* Image filter functions */
-void ww_apply_filter(image_data_t *img, const ww_filter_t *filter);
-void ww_apply_blur(image_data_t *img, float radius);
-void ww_apply_brightness(image_data_t *img, float brightness);
-void ww_apply_contrast(image_data_t *img, float contrast);
-void ww_apply_saturation(image_data_t *img, float saturation);
-
-/* Gradient generation */
-image_data_t *ww_generate_gradient(int width, int height, const ww_gradient_config_t *config);
-
-/* Transition/blend functions */
-image_data_t *ww_blend_images(const image_data_t *img1, const image_data_t *img2, float alpha);
-image_data_t *ww_transition_images(const image_data_t *from, const image_data_t *to, 
-                                    ww_transition_type_t type, float progress);
-
-/* Playlist functions */
-int ww_load_playlist(const char *path, char ***files, int *count);
-void ww_free_playlist(char **files, int count);
-
-/* Time-based functions */
-ww_time_period_t ww_get_current_time_period(void);
-const char *ww_time_period_name(ww_time_period_t period);
-
 /* Video decoder functions */
 video_decoder_t *ww_video_create(const char *path, int target_width, int target_height, bool loop);
 image_data_t *ww_video_next_frame(video_decoder_t *decoder);
@@ -163,6 +151,31 @@ double ww_video_get_frame_duration(video_decoder_t *decoder);
 bool ww_video_is_eof(video_decoder_t *decoder);
 void ww_video_seek_start(video_decoder_t *decoder);
 void ww_video_destroy(video_decoder_t *decoder);
+
+/* Transition state structure (opaque) */
+typedef struct ww_transition_state ww_transition_state;
+
+/* Transition functions */
+ww_transition_state *ww_transition_create(ww_transition_type_t type, float duration,
+                                          int width, int height);
+void ww_transition_destroy(ww_transition_state *state);
+void ww_transition_start(ww_transition_state *state, const uint8_t *old_data,
+                         const uint8_t *new_data);
+bool ww_transition_update(ww_transition_state *state, float delta_time, uint8_t **output_data);
+bool ww_transition_is_active(const ww_transition_state *state);
+float ww_transition_get_progress(const ww_transition_state *state);
+
+/* Directory scanning */
+typedef struct {
+    char **paths;
+    int count;
+} ww_file_list_t;
+
+/* Scan directory for image files */
+int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recursive);
+
+/* Free file list */
+void ww_free_file_list(ww_file_list_t *file_list);
 
 /* Error handling */
 const char *ww_get_error(void);

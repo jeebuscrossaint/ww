@@ -351,7 +351,104 @@ static image_data_t* load_image(const char *path) {
 
 
 
+// Cubic interpolation helper for bicubic scaling
+static inline float cubic_hermite(float A, float B, float C, float D, float t) {
+    float a = -A / 2.0f + (3.0f * B) / 2.0f - (3.0f * C) / 2.0f + D / 2.0f;
+    float b = A - (5.0f * B) / 2.0f + 2.0f * C - D / 2.0f;
+    float c = -A / 2.0f + C / 2.0f;
+    float d = B;
+    return a * t * t * t + b * t * t + c * t + d;
+}
+
+// Clamp value to 0-255 range
+static inline uint8_t clamp_u8(float value) {
+    if (value < 0.0f) return 0;
+    if (value > 255.0f) return 255;
+    return (uint8_t)value;
+}
+
+// Bilinear interpolation scaling (better quality than nearest-neighbor)
+static void scale_bilinear(const image_data_t *src, image_data_t *dst) {
+    float x_ratio = (float)src->width / (float)dst->width;
+    float y_ratio = (float)src->height / (float)dst->height;
+    
+    for (int y = 0; y < dst->height; y++) {
+        for (int x = 0; x < dst->width; x++) {
+            float src_x = x * x_ratio;
+            float src_y = y * y_ratio;
+            
+            int x1 = (int)src_x;
+            int y1 = (int)src_y;
+            int x2 = (x1 + 1 < src->width) ? x1 + 1 : x1;
+            int y2 = (y1 + 1 < src->height) ? y1 + 1 : y1;
+            
+            float x_diff = src_x - x1;
+            float y_diff = src_y - y1;
+            
+            int dst_idx = (y * dst->width + x) * 4;
+            
+            for (int c = 0; c < 4; c++) {
+                int idx_tl = (y1 * src->width + x1) * 4 + c;
+                int idx_tr = (y1 * src->width + x2) * 4 + c;
+                int idx_bl = (y2 * src->width + x1) * 4 + c;
+                int idx_br = (y2 * src->width + x2) * 4 + c;
+                
+                float top = src->data[idx_tl] * (1.0f - x_diff) + src->data[idx_tr] * x_diff;
+                float bottom = src->data[idx_bl] * (1.0f - x_diff) + src->data[idx_br] * x_diff;
+                float value = top * (1.0f - y_diff) + bottom * y_diff;
+                
+                dst->data[dst_idx + c] = clamp_u8(value);
+            }
+        }
+    }
+}
+
+// Bicubic interpolation scaling (highest quality)
+static void scale_bicubic(const image_data_t *src, image_data_t *dst) {
+    float x_ratio = (float)src->width / (float)dst->width;
+    float y_ratio = (float)src->height / (float)dst->height;
+    
+    for (int y = 0; y < dst->height; y++) {
+        for (int x = 0; x < dst->width; x++) {
+            float src_x = x * x_ratio;
+            float src_y = y * y_ratio;
+            
+            int x1 = (int)src_x;
+            int y1 = (int)src_y;
+            
+            float x_diff = src_x - x1;
+            float y_diff = src_y - y1;
+            
+            int dst_idx = (y * dst->width + x) * 4;
+            
+            for (int c = 0; c < 4; c++) {
+                float col[4];
+                
+                for (int ky = 0; ky < 4; ky++) {
+                    int sy = y1 - 1 + ky;
+                    sy = (sy < 0) ? 0 : ((sy >= src->height) ? src->height - 1 : sy);
+                    
+                    float row[4];
+                    for (int kx = 0; kx < 4; kx++) {
+                        int sx = x1 - 1 + kx;
+                        sx = (sx < 0) ? 0 : ((sx >= src->width) ? src->width - 1 : sx);
+                        
+                        int idx = (sy * src->width + sx) * 4 + c;
+                        row[kx] = src->data[idx];
+                    }
+                    
+                    col[ky] = cubic_hermite(row[0], row[1], row[2], row[3], x_diff);
+                }
+                
+                float value = cubic_hermite(col[0], col[1], col[2], col[3], y_diff);
+                dst->data[dst_idx + c] = clamp_u8(value);
+            }
+        }
+    }
+}
+
 // Scale image to fit output dimensions while preserving aspect ratio
+// Now uses bicubic scaling for high quality
 static image_data_t* scale_image(const image_data_t *src, int target_width, int target_height, bool preserve_aspect) {
     if (!src || !src->data) {
         return nullptr;
@@ -391,28 +488,22 @@ static image_data_t* scale_image(const image_data_t *src, int target_width, int 
         return nullptr;
     }
 
-    // Simple nearest-neighbor scaling
-    // TODO: Use better scaling algorithm (bilinear/bicubic)
-    for (int y = 0; y < new_height; y++) {
-        for (int x = 0; x < new_width; x++) {
-            int src_x = (x * src->width) / new_width;
-            int src_y = (y * src->height) / new_height;
-            
-            int src_idx = (src_y * src->width + src_x) * 4;
-            int dst_idx = (y * new_width + x) * 4;
-            
-            scaled->data[dst_idx + 0] = src->data[src_idx + 0]; // R
-            scaled->data[dst_idx + 1] = src->data[src_idx + 1]; // G
-            scaled->data[dst_idx + 2] = src->data[src_idx + 2]; // B
-            scaled->data[dst_idx + 3] = src->data[src_idx + 3]; // A
-        }
+    // Use bicubic scaling for best quality
+    // Falls back to bilinear for very large scale factors (>4x)
+    float scale_factor = (float)src->width / new_width;
+    if (scale_factor > 4.0f || scale_factor < 0.25f) {
+        // Use faster bilinear for extreme scaling
+        scale_bilinear(src, scaled);
+    } else {
+        // Use bicubic for normal scaling (best quality)
+        scale_bicubic(src, scaled);
     }
 
     return scaled;
 }
 
-// Create a centered/letterboxed image on a black background
-static image_data_t* center_image(const image_data_t *src, int canvas_width, int canvas_height) {
+// Create a centered/letterboxed image with configurable background
+static image_data_t* center_image(const image_data_t *src, int canvas_width, int canvas_height, uint32_t bg_color) {
     if (!src || !src->data) {
         return nullptr;
     }
@@ -432,12 +523,17 @@ static image_data_t* center_image(const image_data_t *src, int canvas_width, int
         return nullptr;
     }
     
-    // Fill with opaque black background (not transparent!)
+    // Fill with background color (RGBA format)
+    uint8_t bg_r = (bg_color >> 24) & 0xFF;
+    uint8_t bg_g = (bg_color >> 16) & 0xFF;
+    uint8_t bg_b = (bg_color >> 8) & 0xFF;
+    uint8_t bg_a = bg_color & 0xFF;
+    
     for (int i = 0; i < canvas_width * canvas_height; i++) {
-        canvas->data[i * 4 + 0] = 0;   // R
-        canvas->data[i * 4 + 1] = 0;   // G
-        canvas->data[i * 4 + 2] = 0;   // B
-        canvas->data[i * 4 + 3] = 255; // A (opaque!)
+        canvas->data[i * 4 + 0] = bg_r;
+        canvas->data[i * 4 + 1] = bg_g;
+        canvas->data[i * 4 + 2] = bg_b;
+        canvas->data[i * 4 + 3] = bg_a;
     }
 
     // Calculate centering offset
@@ -508,7 +604,7 @@ image_data_t* ww_load_image_mode(const char *path, int output_width, int output_
             if (!scaled) return nullptr;
             
             if (scaled->width != output_width || scaled->height != output_height) {
-                result = center_image(scaled, output_width, output_height);
+                result = center_image(scaled, output_width, output_height, bg_color);
                 if (scaled->data) free(scaled->data);
                 free(scaled);
             } else {
@@ -541,7 +637,7 @@ image_data_t* ww_load_image_mode(const char *path, int output_width, int output_
             
             // Crop to output size if needed
             if (scaled->width != output_width || scaled->height != output_height) {
-                result = center_image(scaled, output_width, output_height);
+                result = center_image(scaled, output_width, output_height, bg_color);
                 if (scaled->data) free(scaled->data);
                 free(scaled);
             } else {
@@ -560,7 +656,7 @@ image_data_t* ww_load_image_mode(const char *path, int output_width, int output_
         
         case 3: // WW_MODE_CENTER - no scaling, just center
         {
-            result = center_image(img, output_width, output_height);
+            result = center_image(img, output_width, output_height, bg_color);
             if (img->data) free(img->data);
             free(img);
             break;
