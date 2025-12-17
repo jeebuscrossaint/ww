@@ -4,14 +4,14 @@ A fast, optimized, and universal wallpaper setter for Wayland compositors.
 
 ## Features
 
-- 🚀 **Fast & Optimized** - Written in C++ with performance in mind
-- 🎨 **Universal Format Support** - PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld, GIF, MP4, WebM
-- 🖥️ **Multi-Monitor** - Set wallpapers per-output or all at once
-- 🔄 **Animated Wallpapers** - Support for GIF and video formats
-- 🎬 **Slideshow Mode** - Automatic slideshow with directory scanning and transitions
-- ✨ **Smooth Transitions** - Fade and slide effects between wallpapers
-- 📁 **Directory Scanning** - Recursively scan folders for images
-- 🪟 **Compositor Agnostic** - Works with wlroots-based compositors (sway, Hyprland, etc.)
+- **Fast & Optimized** - Written in C++ with performance in mind
+- **Universal Format Support** - PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld, GIF, MP4, WebM
+- **Multi-Monitor** - Set wallpapers per-output or all at once
+- **Animated Wallpapers** - Support for GIF and video formats
+- **Slideshow Mode** - Automatic slideshow with directory scanning and transitions
+- **Smooth Transitions** - Fade and slide effects between wallpapers
+- **Directory Scanning** - Recursively scan folders for images
+- **Compositor Agnostic** - Works with wlroots-based compositors (sway, Hyprland, etc.)
 
 ## Supported Formats
 
@@ -26,7 +26,7 @@ A fast, optimized, and universal wallpaper setter for Wayland compositors.
 git clone <repo-url>
 cd ww
 ./generate_protocols.sh   # Generate Wayland protocol bindings
-xmake                      # Build the project
+xmake                      # Build the project (auto-installs most dependencies)
 xmake install              # Install to ~/.local/bin (or use sudo for system-wide)
 ```
 
@@ -48,21 +48,33 @@ sudo apt update
 sudo apt install xmake
 ```
 
-**2. Install system dependencies:**
+**2. Install Wayland development libraries:**
+
+xmake will automatically download and build most dependencies (stb, libtiff, libwebp, libjxl, ffmpeg).
+You only need to install Wayland system libraries:
 
 ```bash
 # Arch Linux
-sudo pacman -S wayland wayland-protocols ffmpeg libpng libjpeg-turbo libwebp libtiff
+sudo pacman -S wayland wayland-protocols
 
 # Ubuntu/Debian
-sudo apt install libwayland-dev wayland-protocols libavcodec-dev libavformat-dev \
-                 libswscale-dev libpng-dev libjpeg-dev libwebp-dev libtiff-dev \
-                 libjxl-dev
+sudo apt install libwayland-dev wayland-protocols
 
 # Fedora
-sudo dnf install wayland-devel wayland-protocols-devel ffmpeg-devel \
-                 libpng-devel libjpeg-turbo-devel libwebp-devel libtiff-devel \
-                 libjxl-devel
+sudo dnf install wayland-devel wayland-protocols-devel
+```
+
+**Note:** If xmake has trouble auto-installing packages, you can manually install them:
+```bash
+# Arch Linux
+sudo pacman -S ffmpeg libwebp libtiff libjxl
+
+# Ubuntu/Debian
+sudo apt install libavcodec-dev libavformat-dev libswscale-dev \
+                 libwebp-dev libtiff-dev libjxl-dev
+
+# Fedora
+sudo dnf install ffmpeg-devel libwebp-devel libtiff-devel libjxl-devel
 ```
 
 ### Build Instructions
@@ -89,6 +101,7 @@ The script also automatically fixes C++ keyword collisions (the `wlr-layer-shell
 
 ```bash
 # Default build (release mode)
+# xmake will auto-download and build missing dependencies
 xmake
 
 # Or explicitly set release mode (optimized, stripped)
@@ -116,11 +129,15 @@ sudo xmake install -o /usr/local
 - Run `./generate_protocols.sh` first to generate the protocol bindings
 
 **Error: "wayland-scanner not found"**
-- Install `wayland-protocols` package for your distro
+- Install `wayland-protocols` package: `sudo pacman -S wayland-protocols`
 
-**Error: Missing image format libraries**
-- Install the system dependencies listed above
-- xmake will automatically fetch some packages, but system libraries are preferred
+**First build is slow?**
+- Normal! xmake is downloading and building dependencies (ffmpeg, libwebp, etc.)
+- Subsequent builds will be much faster
+
+**Package download fails?**
+- Try: `xmake f --pkg=system` to prefer system packages
+- Or manually install system packages (see Prerequisites section)
 
 ## Usage
 
