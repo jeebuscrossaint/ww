@@ -13,7 +13,10 @@ extern "C" {
 #define WW_VERSION_MINOR 1
 #define WW_VERSION_PATCH 0
 
-typedef enum {
+// file types we support
+
+typedef enum 
+{
     WW_TYPE_UNKNOWN = 0,
     WW_TYPE_PNG,
     WW_TYPE_JPEG,
@@ -30,7 +33,8 @@ typedef enum {
     WW_TYPE_SOLID_COLOR,
 } ww_filetype_t;
 
-typedef enum {
+typedef enum 
+{
     WW_MODE_FIT = 0,
     WW_MODE_FILL,
     WW_MODE_STRETCH,
@@ -38,7 +42,8 @@ typedef enum {
     WW_MODE_TILE,
 } ww_scale_mode_t;
 
-typedef enum {
+typedef enum 
+{
     WW_TRANSITION_NONE = 0,
     WW_TRANSITION_FADE,
     WW_TRANSITION_SLIDE_LEFT,
@@ -57,15 +62,16 @@ typedef enum {
     WW_TRANSITION_PIXELATE,
 } ww_transition_type_t;
 
-typedef struct {
+typedef struct 
+{
     char *name;
-    int32_t width;
-    int32_t height;
+    int32_t width, height;
     int32_t refresh_rate;
     int32_t scale;
 } ww_output_t;
 
-typedef struct {
+typedef struct 
+{
     const char *file_path;
     ww_filetype_t type;
     const char *output_name;
@@ -80,6 +86,7 @@ typedef struct {
 typedef struct image_data_t image_data_t;
 typedef struct video_decoder_t video_decoder_t;
 
+// core functions
 int ww_init(void);
 void ww_cleanup(void);
 
@@ -89,10 +96,12 @@ int ww_set_wallpaper_no_loop(const ww_config_t *config);
 int ww_list_outputs(ww_output_t **outputs, int *count);
 void ww_dispatch_events(void);
 
+// image loading
 image_data_t *ww_load_image(const char *path, int output_width, int output_height, bool preserve_aspect);
 image_data_t *ww_load_image_mode(const char *path, int output_width, int output_height, int mode, uint32_t bg_color);
 void ww_free_image(image_data_t *img);
 
+// video decoder
 video_decoder_t *ww_video_create(const char *path, int target_width, int target_height, bool loop);
 image_data_t *ww_video_next_frame(video_decoder_t *decoder);
 double ww_video_get_frame_duration(video_decoder_t *decoder);
@@ -111,7 +120,8 @@ bool ww_transition_update(ww_transition_state *state, float delta_time, uint8_t 
 bool ww_transition_is_active(const ww_transition_state *state);
 float ww_transition_get_progress(const ww_transition_state *state);
 
-typedef struct {
+typedef struct 
+{
     char **paths;
     int count;
 } ww_file_list_t;
@@ -129,4 +139,4 @@ const char *ww_get_error(void);
 }
 #endif
 
-#endif /* WW_H */
+#endif

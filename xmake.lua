@@ -1,9 +1,7 @@
--- Project metadata
 set_project("ww")
 set_version("0.1.0")
 set_languages("c++20")
 
--- Build modes
 add_rules("mode.debug", "mode.release")
 
 if is_mode("release") then
@@ -18,47 +16,40 @@ if is_mode("debug") then
     add_defines("DEBUG")
 end
 
--- Target: ww (wallpaper setter)
 target("ww")
     set_kind("binary")
 
-    -- Source and header directories
     add_includedirs("inc")
     add_includedirs("build/protocols")
     add_files("src/*.cc")
 
-    -- Wayland dependencies
+    -- wayland stuff
     add_packages("wayland", "wayland-protocols")
 
-    -- Image format support (stb handles PNG, JPEG, BMP, TGA, GIF, PNM)
+    -- image formats (stb handles PNG, JPEG, BMP, TGA, GIF, PNM)
     add_packages("stb", "libwebp", "libtiff", "libjxl")
 
-    -- Video/Animation support (FFmpeg for GIF, WebP, MP4, WebM)
+    -- video support
     add_packages("ffmpeg")
 
-    -- Additional useful libs
     add_syslinks("pthread", "m", "wayland-client", "avcodec", "avformat", "avutil", "swscale")
 
-    -- Link the protocol object files (compile as C, not C++)
+    -- protocol files (need to be compiled as C)
     add_files("build/protocols/wlr-layer-shell-unstable-v1-protocol.c", {languages = "c"})
     add_files("build/protocols/xdg-shell-protocol.c", {languages = "c"})
 
-    -- Compiler flags
     add_cxxflags("-Wall", "-Wextra", "-Wpedantic")
-    add_cxxflags("-fno-exceptions", "-fno-rtti", {force = true}) -- Optional: for max performance
+    add_cxxflags("-fno-exceptions", "-fno-rtti", {force = true})
 
-    -- Link time optimization in release
     if is_mode("release") then
         add_ldflags("-flto")
         add_cxxflags("-flto")
     end
 
-    -- Install man page
     on_install(function (target)
         os.cp("man/ww.1", "$(installdir)/share/man/man1/")
     end)
 
-    -- Install shell completions
     on_install(function (target)
         os.cp("completions/ww.bash", "$(installdir)/share/bash-completion/completions/ww")
         os.cp("completions/_ww", "$(installdir)/share/zsh/site-functions/_ww")
@@ -66,7 +57,6 @@ target("ww")
     end)
 target_end()
 
--- Package requirements (xmake will try to find/install these)
 add_requires("wayland")
 add_requires("wayland-protocols")
 add_requires("stb")

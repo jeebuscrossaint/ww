@@ -1,5 +1,4 @@
 #include "ww.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -14,17 +13,17 @@
 
 extern "C" {
 
-struct image_data_t {
+struct image_data_t 
+{
     uint8_t *data;
-    int width;
-    int height;
+    int width, height;
     int channels;
 };
 
-static image_data_t* load_webp(const char *path) {
-    if (!path) {
+static image_data_t* load_webp(const char *path) 
+{
+    if (!path)
         return nullptr;
-    }
 
     FILE *file = fopen(path, "rb");
     if (!file) {
@@ -42,13 +41,14 @@ static image_data_t* load_webp(const char *path) {
         return nullptr;
     }
 
-    if (fread(file_data, 1, file_size, file) != file_size) {
+    size_t read = fread(file_data, 1, file_size, file);
+    fclose(file);
+    
+    if (read != file_size) {
         fprintf(stderr, "Failed to read WebP file\n");
         free(file_data);
-        fclose(file);
         return nullptr;
     }
-    fclose(file);
 
     image_data_t *img = (image_data_t*)malloc(sizeof(image_data_t));
     if (!img) {
@@ -70,10 +70,10 @@ static image_data_t* load_webp(const char *path) {
     return img;
 }
 
-static image_data_t* load_tiff(const char *path) {
-    if (!path) {
+static image_data_t* load_tiff(const char *path) 
+{
+    if (!path)
         return nullptr;
-    }
 
     TIFF *tif = TIFFOpen(path, "r");
     if (!tif) {

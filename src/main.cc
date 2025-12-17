@@ -12,27 +12,30 @@
 
 #include "ww.h"
 
-// Global state for signal handling
+// signal handling stuff
 static volatile bool running = true;
 static volatile bool needs_update = false;
 
-static void alarm_handler(int signum) {
+void alarm_handler(int signum) {
     (void)signum;
     needs_update = true;
 }
 
-static void signal_handler(int signum) {
+void signal_handler(int signum) {
     (void)signum;
     running = false;
 }
 
-static void print_version() {
+void print_version() {
     std::cout << "ww v" << WW_VERSION_MAJOR << "." << WW_VERSION_MINOR << "." 
               << WW_VERSION_PATCH << std::endl;
     std::cout << "Universal Wayland wallpaper setter" << std::endl;
 }
 
-static uint32_t parse_color(const char *color_str) {
+
+
+uint32_t parse_color(const char *color_str) 
+{
     if (!color_str) return 0xFF000000;
     
     if (color_str[0] == '#') color_str++;
@@ -40,70 +43,71 @@ static uint32_t parse_color(const char *color_str) {
     unsigned int r, g, b, a = 255;
     int len = strlen(color_str);
     
-    if (len == 6) {
+    if (len == 6)
         sscanf(color_str, "%02x%02x%02x", &r, &g, &b);
-    } else if (len == 8) {
+    else if (len == 8)
         sscanf(color_str, "%02x%02x%02x%02x", &r, &g, &b, &a);
-    } else {
+    else
         return 0xFF000000;
-    }
     
     return (r << 24) | (g << 16) | (b << 8) | a;
 }
 
-static void print_usage(const char *prog_name) {
+void print_usage(const char *prog_name) {
     char *prog_copy = strdup(prog_name);
     char *base = basename(prog_copy);
     
-    std::cout << "Usage: " << base << " [OPTIONS] <file|directory|color>" << std::endl;
-    std::cout << "\nOptions:" << std::endl;
-    std::cout << "  -o, --output <name>    Set wallpaper for specific output" << std::endl;
-    std::cout << "  -m, --mode <mode>      Scaling mode: fit, fill, stretch, center, tile (default: fit)" << std::endl;
-    std::cout << "  -c, --color <#RRGGBB>  Solid color background or letterbox color" << std::endl;
-    std::cout << "  -l, --loop             Loop animated wallpapers (GIF/video)" << std::endl;
-    std::cout << "  -S, --slideshow        Slideshow mode (multiple files)" << std::endl;
-    std::cout << "  -i, --interval <sec>   Slideshow interval in seconds (default: 300)" << std::endl;
-    std::cout << "  -r, --random           Random slideshow order" << std::endl;
-    std::cout << "  -R, --recursive        Scan directories recursively" << std::endl;
-    std::cout << "  -t, --transition <type> Transition effect (default: fade)" << std::endl;
-    std::cout << "                         Basic: none, fade" << std::endl;
-    std::cout << "                         Slide: slide-left, slide-right, slide-up, slide-down" << std::endl;
-    std::cout << "                         Zoom: zoom-in, zoom-out" << std::endl;
-    std::cout << "                         Circle: circle-open, circle-close" << std::endl;
-    std::cout << "                         Wipe: wipe-left, wipe-right, wipe-up, wipe-down" << std::endl;
-    std::cout << "                         Effects: dissolve, pixelate" << std::endl;
-    std::cout << "  -d, --duration <sec>   Transition duration in seconds (default: 1.0)" << std::endl;
-    std::cout << "  -f, --fps <fps>        Transition frame rate (default: 30, max: 240)" << std::endl;
-    std::cout << "  -D, --daemon           Run in background and restore wallpapers from cache" << std::endl;
-    std::cout << "  -L, --list-outputs     List available outputs" << std::endl;
-    std::cout << "  -v, --version          Show version information" << std::endl;
-    std::cout << "  -h, --help             Show this help message" << std::endl;
-    std::cout << "\nScaling modes:" << std::endl;
-    std::cout << "  fit      - Scale to fit with letterboxing (default)" << std::endl;
-    std::cout << "  fill     - Scale to fill, crop if needed" << std::endl;
-    std::cout << "  stretch  - Stretch to fill, ignore aspect ratio" << std::endl;
-    std::cout << "  center   - No scaling, center image" << std::endl;
-    std::cout << "  tile     - Repeat image to fill screen" << std::endl;
-    std::cout << "\nSupported formats:" << std::endl;
-    std::cout << "  Static Images: PNG, JPEG, BMP, TGA, PNM/PBM/PGM/PPM" << std::endl;
-    std::cout << "                 WebP, TIFF/TIF, JXL (JPEG XL), Farbfeld" << std::endl;
-    std::cout << "  Animated: GIF, MP4, WebM, Animated WebP" << std::endl;
-    std::cout << "\nExamples:" << std::endl;
-    std::cout << "  " << base << " wallpaper.png" << std::endl;
-    std::cout << "  " << base << " --loop video.mp4" << std::endl;
-    std::cout << "  " << base << " --mode fill image.jpg" << std::endl;
-    std::cout << "  " << base << " --mode center --color '#282828' logo.png" << std::endl;
-    std::cout << "  " << base << " --color '#FF5733'" << std::endl;
-    std::cout << "  " << base << " -S -i 300 img1.jpg img2.png img3.webp" << std::endl;
-    std::cout << "  " << base << " -S -r -i 60 ~/wallpapers/*.jpg" << std::endl;
-    std::cout << "  " << base << " -S -R ~/wallpapers/   # Scan directory recursively" << std::endl;
-    std::cout << "  " << base << " -S -t fade -d 2.0 ~/wallpapers/*.png   # Fade transition" << std::endl;
-    std::cout << "  " << base << " -S -t fade -d 2.0 -f 60 ~/wallpapers/*.png   # 60 FPS fade" << std::endl;
+    std::cout << "Usage: " << base << " [OPTIONS] <file|directory|color>\n";
+    std::cout << "\nOptions:\n";
+    std::cout << "  -o, --output <name>    Set wallpaper for specific output\n";
+    std::cout << "  -m, --mode <mode>      Scaling mode: fit, fill, stretch, center, tile (default: fit)\n";
+    std::cout << "  -c, --color <#RRGGBB>  Solid color background or letterbox color\n";
+    std::cout << "  -l, --loop             Loop animated wallpapers (GIF/video)\n";
+    std::cout << "  -S, --slideshow        Slideshow mode (multiple files)\n";
+    std::cout << "  -i, --interval <sec>   Slideshow interval in seconds (default: 300)\n";
+    std::cout << "  -r, --random           Random slideshow order\n";
+    std::cout << "  -R, --recursive        Scan directories recursively\n";
+    std::cout << "  -t, --transition <type> Transition effect (default: fade)\n";
+    std::cout << "                         Basic: none, fade\n";
+    std::cout << "                         Slide: slide-left, slide-right, slide-up, slide-down\n";
+    std::cout << "                         Zoom: zoom-in, zoom-out\n";
+    std::cout << "                         Circle: circle-open, circle-close\n";
+    std::cout << "                         Wipe: wipe-left, wipe-right, wipe-up, wipe-down\n";
+    std::cout << "                         Effects: dissolve, pixelate\n";
+    std::cout << "  -d, --duration <sec>   Transition duration in seconds (default: 1.0)\n";
+    std::cout << "  -f, --fps <fps>        Transition frame rate (default: 30, max: 240)\n";
+    std::cout << "  -D, --daemon           Run in background and restore wallpapers from cache\n";
+    std::cout << "  -L, --list-outputs     List available outputs\n";
+    std::cout << "  -v, --version          Show version information\n";
+    std::cout << "  -h, --help             Show this help message\n";
+    std::cout << "\nScaling modes:\n"
+              << "  fit      - Scale to fit with letterboxing (default)\n"
+              << "  fill     - Scale to fill, crop if needed\n"
+              << "  stretch  - Stretch to fill, ignore aspect ratio\n"
+              << "  center   - No scaling, center image\n"
+              << "  tile     - Repeat image to fill screen\n\n";
+    
+    std::cout << "Supported formats:\n"
+              << "  Static Images: PNG, JPEG, BMP, TGA, PNM/PBM/PGM/PPM\n"
+              << "                 WebP, TIFF/TIF, JXL (JPEG XL), Farbfeld\n"
+              << "  Animated: GIF, MP4, WebM, Animated WebP\n\n";
+    
+    std::cout << "Examples:\n"
+              << "  " << base << " wallpaper.png\n"
+              << "  " << base << " --loop video.mp4\n"
+              << "  " << base << " --mode fill image.jpg\n"
+              << "  " << base << " --mode center --color '#282828' logo.png\n"
+              << "  " << base << " --color '#FF5733'\n"
+              << "  " << base << " -S -i 300 img1.jpg img2.png img3.webp\n"
+              << "  " << base << " -S -r -i 60 ~/wallpapers/*.jpg\n"
+              << "  " << base << " -S -R ~/wallpapers/   # Scan directory recursively\n"
+              << "  " << base << " -S -t fade -d 2.0 ~/wallpapers/*.png   # Fade transition\n"
+              << "  " << base << " -S -t fade -d 2.0 -f 60 ~/wallpapers/*.png   # 60 FPS fade\n";
     
     free(prog_copy);
 }
 
-static void list_outputs() {
+void list_outputs() {
     ww_output_t *outputs = nullptr;
     int count = 0;
 
@@ -123,7 +127,8 @@ static void list_outputs() {
     free(outputs);
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) 
+{
     if (argc < 2) {
         print_usage(argv[0]);
         return 1;
@@ -181,19 +186,19 @@ int main(int argc, char *argv[]) {
                 config.output_name = optarg;
                 break;
             case 'm':
-                if (strcmp(optarg, "fit") == 0) {
+                if (strcmp(optarg, "fit") == 0)
                     config.mode = WW_MODE_FIT;
-                } else if (strcmp(optarg, "fill") == 0) {
+                else if (strcmp(optarg, "fill") == 0)
                     config.mode = WW_MODE_FILL;
-                } else if (strcmp(optarg, "stretch") == 0) {
+                else if (strcmp(optarg, "stretch") == 0)
                     config.mode = WW_MODE_STRETCH;
-                } else if (strcmp(optarg, "center") == 0) {
+                else if (strcmp(optarg, "center") == 0)
                     config.mode = WW_MODE_CENTER;
-                } else if (strcmp(optarg, "tile") == 0) {
+                else if (strcmp(optarg, "tile") == 0)
                     config.mode = WW_MODE_TILE;
-                } else {
-                    std::cerr << "Error: Invalid mode '" << optarg << "'" << std::endl;
-                    std::cerr << "Valid modes: fit, fill, stretch, center, tile" << std::endl;
+                else {
+                    std::cerr << "Error: Invalid mode '" << optarg << "'\n"
+                              << "Valid modes: fit, fill, stretch, center, tile\n";
                     return 1;
                 }
                 break;
@@ -465,10 +470,11 @@ int main(int argc, char *argv[]) {
         default: transition_name = "none"; break;
     }
     
-    std::cout << "Slideshow started with " << files.size() << " files" << std::endl;
-    std::cout << "  Interval: " << slideshow_interval << "s" << std::endl;
-    std::cout << "  Random: " << (random_mode ? "yes" : "no") << std::endl;
-    std::cout << "  Transition: " << transition_name << " (" << transition_duration << "s @ " << transition_fps << " FPS)" << std::endl;
+    std::cout << "Slideshow started with " << files.size() << " files\n"
+              << "  Interval: " << slideshow_interval << "s\n"
+              << "  Random: " << (random_mode ? "yes" : "no") << "\n"
+              << "  Transition: " << transition_name << " (" << transition_duration 
+              << "s @ " << transition_fps << " FPS)\n";
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
@@ -529,9 +535,7 @@ int main(int argc, char *argv[]) {
         }
 
         ww_dispatch_events();
-        
-        int sleep_us = 1000000 / (transition_fps > 0 ? transition_fps : 30);
-        usleep(sleep_us);
+        usleep(1000000 / (transition_fps > 0 ? transition_fps : 30));
     }
 
     if (!daemon_mode) {

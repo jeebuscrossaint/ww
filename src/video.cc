@@ -1,5 +1,4 @@
 #include "ww.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -14,38 +13,37 @@ extern "C" {
 }
 
 extern void set_error(const char *msg);
-struct image_data_t {
+
+struct image_data_t 
+{
     uint8_t *data;
-    int width;
-    int height;
+    int width, height;
     int channels;
 };
 
-struct video_decoder_t {
+struct video_decoder_t 
+{
     AVFormatContext *format_ctx;
     AVCodecContext *codec_ctx;
     struct SwsContext *sws_ctx;
     int video_stream_idx;
     
-    int width;
-    int height;
-    int target_width;
-    int target_height;
+    int width, height;
+    int target_width, target_height;
     
     AVFrame *frame;
     AVPacket *packet;
     
-    double fps;
-    double frame_duration;
+    double fps, frame_duration;
     int64_t start_time;
     
-    bool loop;
-    bool eof;
+    bool loop, eof;
     
     pthread_mutex_t lock;
 };
 
-extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, int target_height, bool loop) {
+extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, int target_height, bool loop) 
+{
     if (!path) {
         set_error("NULL path provided");
         return nullptr;
@@ -76,6 +74,7 @@ extern "C" video_decoder_t* ww_video_create(const char *path, int target_width, 
         return nullptr;
     }
     
+    // find video stream
     for (unsigned int i = 0; i < decoder->format_ctx->nb_streams; i++) {
         if (decoder->format_ctx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             decoder->video_stream_idx = i;
