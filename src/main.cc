@@ -74,6 +74,7 @@ static void print_usage(const char *prog_name) {
     std::cout << "                         Effects: dissolve, pixelate" << std::endl;
     std::cout << "  -d, --duration <sec>   Transition duration in seconds (default: 1.0)" << std::endl;
     std::cout << "  -f, --fps <fps>        Transition frame rate (default: 30, max: 240)" << std::endl;
+    std::cout << "  -D, --daemon           Run in background and restore wallpapers from cache" << std::endl;
     std::cout << "  -L, --list-outputs     List available outputs" << std::endl;
     std::cout << "  -v, --version          Show version information" << std::endl;
     std::cout << "  -h, --help             Show this help message" << std::endl;
@@ -144,6 +145,7 @@ int main(int argc, char *argv[]) {
     int slideshow_interval = 300;
     bool random_mode = false;
     bool recursive_mode = false;
+    bool daemon_mode = false;
     ww_transition_type_t transition_type = WW_TRANSITION_FADE;
     float transition_duration = 1.0f;
     int transition_fps = 30;
@@ -161,6 +163,7 @@ int main(int argc, char *argv[]) {
         {"transition",    required_argument, 0, 't'},
         {"duration",      required_argument, 0, 'd'},
         {"fps",           required_argument, 0, 'f'},
+        {"daemon",        no_argument,       0, 'D'},
         {"list-outputs",  no_argument,       0, 'L'},
         {"version",       no_argument,       0, 'v'},
         {"help",          no_argument,       0, 'h'},
@@ -172,7 +175,7 @@ int main(int argc, char *argv[]) {
     bool list_mode = false;
     bool color_only = false;
 
-    while ((opt = getopt_long(argc, argv, "o:m:c:lSi:rRt:d:f:Lvh", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "o:m:c:lSi:rRt:d:f:DLvh", long_options, &option_index)) != -1) {
         switch (opt) {
             case 'o':
                 config.output_name = optarg;
@@ -273,6 +276,9 @@ int main(int argc, char *argv[]) {
                     return 1;
                 }
                 break;
+            case 'D':
+                daemon_mode = true;
+                break;
             case 'L':
                 list_mode = true;
                 break;
@@ -292,9 +298,56 @@ int main(int argc, char *argv[]) {
         std::cerr << "Error: Failed to initialize: " << ww_get_error() << std::endl;
         return 1;
     }
+    
+    if (daemon_mode) {
+        pid_t pid = fork();
+        if (pid < 0) {
+            std::cerr << "Error: Failed to fork to background" << std::endl;
+            ww_cleanup();
+            return 1;
+        }
+        if (pid > 0) {
+            std::cout << "Started ww daemon (PID: " << pid << ")" << std::endl;
+            return 0;
+        }
+        
+        umask(0);
+        setsid();
+        close(STDIN_FILENO);
+        close(STDOUT_FILENO);
+        close(STDERR_FILENO);
+    }
 
     if (list_mode) {
         list_outputs();
+        ww_cleanup();
+        return 0;
+    }
+    
+    if (daemon_mode && optind >= argc && !color_only) {
+        ww_output_t *outputs = nullptr;
+        int output_count = 0;
+        
+        if (ww_list_outputs(&outputs, &output_count) == 0) {
+            for (int i = 0; i < output_count; i++) {
+                ww_config_t cached_config = config;
+                int load_result = ww_cache_load(outputs[i].name, &cached_config);
+                if (load_result != 0) {
+                    load_result = ww_cache_load("all", &cached_config);
+                }
+                if (load_result == 0 && cached_config.file_path && cached_config.file_path[0] != '\0') {
+                    cached_config.output_name = outputs[i].name;
+                    ww_set_wallpaper_no_loop(&cached_config);
+                }
+            }
+            free(outputs);
+        }
+        
+        while (running) {
+            ww_dispatch_events();
+            usleep(16666);
+        }
+        
         ww_cleanup();
         return 0;
     }
@@ -358,6 +411,19 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     }
+    
+    if (config.output_name) {
+        ww_cache_save(config.output_name, &config);
+    } else {
+        ww_output_t *outputs = nullptr;
+        int output_count = 0;
+        if (ww_list_outputs(&outputs, &output_count) == 0) {
+            for (int i = 0; i < output_count; i++) {
+                ww_cache_save(outputs[i].name, &config);
+            }
+            free(outputs);
+        }
+    }
 
     if (slideshow_mode) {
         if (ww_set_wallpaper_no_loop(&config) != 0) {
@@ -371,9 +437,12 @@ int main(int argc, char *argv[]) {
             ww_cleanup();
             return 1;
         }
-        std::cout << "Wallpaper set successfully!" << std::endl;
-        ww_cleanup();
-        return 0;
+        
+        if (!daemon_mode) {
+            std::cout << "Wallpaper set successfully!" << std::endl;
+            ww_cleanup();
+            return 0;
+        }
     }
 
     const char *transition_name = "none";
@@ -434,9 +503,24 @@ int main(int argc, char *argv[]) {
             config.transition_fps = transition_fps;
             
             if (config.type != WW_TYPE_UNKNOWN) {
-                std::cout << "Switching to: " << files[current_index] << std::endl;
+                if (!daemon_mode) {
+                    std::cout << "Switching to: " << files[current_index] << std::endl;
+                }
                 
-                if (ww_set_wallpaper_no_loop(&config) != 0) {
+                if (ww_set_wallpaper_no_loop(&config) == 0) {
+                    if (config.output_name) {
+                        ww_cache_save(config.output_name, &config);
+                    } else {
+                        ww_output_t *outputs = nullptr;
+                        int output_count = 0;
+                        if (ww_list_outputs(&outputs, &output_count) == 0) {
+                            for (int i = 0; i < output_count; i++) {
+                                ww_cache_save(outputs[i].name, &config);
+                            }
+                            free(outputs);
+                        }
+                    }
+                } else if (!daemon_mode) {
                     std::cerr << "Warning: Failed to set wallpaper: " << ww_get_error() << std::endl;
                 }
             }
@@ -450,7 +534,9 @@ int main(int argc, char *argv[]) {
         usleep(sleep_us);
     }
 
-    std::cout << "\nSlideshow stopped" << std::endl;
+    if (!daemon_mode) {
+        std::cout << "\nSlideshow stopped" << std::endl;
+    }
     ww_cleanup();
     return 0;
 }

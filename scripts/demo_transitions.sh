@@ -117,4 +117,14 @@ echo "# Terminal 2 (Circle)"
 echo "${WW} -S -m fill -t circle-open -d 2.0 -f 60 -i 10 ${IMAGES[*]}"
 echo ""
 
+echo "=========================================="
+echo "Tip: Run as daemon for auto-restore!"
+echo "=========================================="
+echo ""
+echo "Add to your compositor config:"
+echo "exec-once = ${WW} --daemon"
+echo ""
+echo "Then set wallpapers normally - they'll persist!"
+echo ""
+
 exit 0

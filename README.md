@@ -116,7 +116,41 @@ ww --mode center --color '#282828' /path/to/logo.png
 
 # Set solid color background
 ww --color '#FF5733'
+
+# Run as daemon (auto-restores wallpapers on login)
+ww --daemon
 ```
+
+### Daemon Mode
+
+Run `ww` as a background daemon that persists wallpapers and auto-restores them on login:
+
+```bash
+# Start daemon (forks to background)
+ww --daemon
+
+# Set wallpaper normally - it gets cached automatically
+ww -m fill ~/wallpapers/mountain.jpg
+
+# Restart your compositor - daemon will restore the wallpaper!
+ww --daemon
+
+# Add to your compositor config for auto-start
+# Hyprland: ~/.config/hypr/hyprland.conf
+exec-once = ww --daemon
+
+# Sway: ~/.config/sway/config
+exec ww --daemon
+```
+
+**How it works:**
+- Daemon mode forks to background and stays running
+- Wallpapers are cached per-output in `~/.cache/ww/`
+- On startup, daemon automatically restores last wallpaper for each output
+- Supports all features: slideshows, transitions, videos, etc.
+- Each monitor can have a different wallpaper
+
+**Cache location:** `~/.cache/ww/<output-name>`
 
 ### Slideshow Mode
 
@@ -160,7 +194,8 @@ ww -S -t slide-left -d 1.5 ~/wallpapers/
 -t, --transition <type>  Transition effect: none, fade, slide-left, slide-right,
                          slide-up, slide-down (default: fade)
 -d, --duration <sec>     Transition duration in seconds (default: 1.0)
--f, --fps <fps>          Transition frame rate (default: 30, max: 120)
+-f, --fps <fps>          Transition frame rate (default: 30, max: 240)
+-D, --daemon             Run in background and restore wallpapers from cache
 -L, --list-outputs       List available outputs
 -v, --version            Show version information
 -h, --help               Show help message

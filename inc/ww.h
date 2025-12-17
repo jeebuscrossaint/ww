@@ -119,6 +119,10 @@ typedef struct {
 int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recursive);
 void ww_free_file_list(ww_file_list_t *file_list);
 
+int ww_cache_save(const char *output_name, const ww_config_t *config);
+int ww_cache_load(const char *output_name, ww_config_t *config);
+void ww_cache_clear(const char *output_name);
+
 const char *ww_get_error(void);
 
 #ifdef __cplusplus
