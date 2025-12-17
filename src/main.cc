@@ -12,7 +12,10 @@
 
 #include "ww.h"
 
-// Global state for slideshow
+// ============================================================================
+// Global State
+// ============================================================================
+
 static volatile bool running = true;
 static volatile bool needs_update = false;
 
@@ -130,6 +133,10 @@ static void list_outputs() {
     free(outputs);
 }
 
+// ============================================================================
+// Main Entry Point
+// ============================================================================
+
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         print_usage(argv[0]);
@@ -144,7 +151,6 @@ int main(int argc, char *argv[]) {
         .loop = false,
         .mode = WW_MODE_FIT,
         .bg_color = 0x000000FF, // Black with full alpha
-        .filter = nullptr,
         .transition = WW_TRANSITION_NONE,
         .transition_duration = 0.0f,
         .transition_fps = 30,

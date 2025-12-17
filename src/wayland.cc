@@ -16,6 +16,10 @@ extern "C" {
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 }
 
+// ============================================================================
+// Data Structures
+// ============================================================================
+
 struct ww_state {
     struct wl_display *display;
     struct wl_registry *registry;
@@ -85,7 +89,7 @@ extern void ww_transition_start(ww_transition_state *state, const uint8_t *old_d
 extern bool ww_transition_update(ww_transition_state *state, float delta_time, uint8_t **output_data);
 extern bool ww_transition_is_active(const ww_transition_state *state);
 
-// Access image data internals
+// Access image data internals (opaque type implementation)
 struct image_data_t {
     uint8_t *data;
     int width;
@@ -93,7 +97,10 @@ struct image_data_t {
     int channels;
 };
 
-// Shared memory helper
+// ============================================================================
+// Shared Memory Helpers
+// ============================================================================
+
 static int create_shm_file(size_t size) {
     const char *xdg_runtime = getenv("XDG_RUNTIME_DIR");
     if (!xdg_runtime) {
@@ -149,7 +156,10 @@ static struct wl_buffer* create_shm_buffer(struct wl_shm *shm, uint8_t **data_ou
     return buffer;
 }
 
-// Output callbacks
+// ============================================================================
+// Wayland Output Callbacks
+// ============================================================================
+
 static void output_geometry(void *data, struct wl_output *wl_output,
                            int32_t x, int32_t y,
                            int32_t physical_width, int32_t physical_height,
@@ -217,7 +227,10 @@ static const struct wl_output_listener output_listener = {
     .description = output_description,
 };
 
-// Layer surface callbacks
+// ============================================================================
+// Layer Surface Callbacks
+// ============================================================================
+
 static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *layer_surface,
                                     uint32_t serial, uint32_t width, uint32_t height) {
     (void)width;
@@ -237,7 +250,10 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
     .closed = layer_surface_closed,
 };
 
-// Frame callback for animations
+// ============================================================================
+// Frame Callbacks (for animations)
+// ============================================================================
+
 static void frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time);
 static void transition_frame_callback_handler(void *data, struct wl_callback *callback, uint32_t time);
 
@@ -405,7 +421,10 @@ static void frame_callback_handler(void *data, struct wl_callback *callback, uin
     update_animated_frame(output);
 }
 
-// Registry callbacks
+// ============================================================================
+// Wayland Registry Callbacks
+// ============================================================================
+
 static void registry_global(void *data, struct wl_registry *registry,
                            uint32_t name, const char *interface,
                            uint32_t version) {

@@ -41,37 +41,6 @@ typedef enum {
     WW_MODE_TILE,         // Repeat image to fill
 } ww_scale_mode_t;
 
-/* Image filter types */
-typedef struct {
-    float blur;           // Blur radius (0 = no blur)
-    float brightness;     // Brightness multiplier (1.0 = normal, 0.0 = black, 2.0 = double)
-    float contrast;       // Contrast multiplier (1.0 = normal, 0.0 = gray, 2.0 = double)
-    float saturation;     // Saturation multiplier (1.0 = normal, 0.0 = grayscale, 2.0 = double)
-} ww_filter_t;
-
-/* Gradient types */
-typedef enum {
-    WW_GRADIENT_LINEAR = 0,
-    WW_GRADIENT_RADIAL,
-    WW_GRADIENT_ANGULAR,
-} ww_gradient_type_t;
-
-/* Gradient stop */
-typedef struct {
-    float position;       // 0.0 to 1.0
-    uint32_t color;       // RGBA color
-} ww_gradient_stop_t;
-
-/* Gradient configuration */
-typedef struct {
-    ww_gradient_type_t type;
-    float angle;          // For linear gradients (degrees)
-    float center_x;       // For radial/angular gradients (0.0 to 1.0)
-    float center_y;       // For radial/angular gradients (0.0 to 1.0)
-    ww_gradient_stop_t *stops;
-    int stop_count;
-} ww_gradient_config_t;
-
 /* Transition types */
 typedef enum {
     WW_TRANSITION_NONE = 0,
@@ -93,13 +62,6 @@ typedef enum {
 } ww_transition_type_t;
 
 /* Time period for time-based switching */
-typedef enum {
-    WW_TIME_PERIOD_MORNING = 0,   // 6:00 - 12:00
-    WW_TIME_PERIOD_AFTERNOON,     // 12:00 - 18:00
-    WW_TIME_PERIOD_EVENING,       // 18:00 - 22:00
-    WW_TIME_PERIOD_NIGHT,         // 22:00 - 6:00
-} ww_time_period_t;
-
 /* Output information */
 typedef struct {
     char *name;
@@ -117,7 +79,6 @@ typedef struct {
     bool loop;                 /* For videos/gifs */
     ww_scale_mode_t mode;      /* Scaling mode */
     uint32_t bg_color;         /* Background color (RGBA) for solid_color or letterboxing */
-    ww_filter_t *filter;       /* Optional image filter */
     ww_transition_type_t transition;  /* Transition effect */
     float transition_duration; /* Transition duration in seconds */
     int transition_fps;        /* Target FPS for transitions (default: 30) */

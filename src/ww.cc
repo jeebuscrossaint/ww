@@ -9,7 +9,10 @@
 #include <string>
 #include <algorithm>
 
-// Error handling
+// ============================================================================
+// Error Handling
+// ============================================================================
+
 static thread_local char error_buffer[256] = {0};
 
 void set_error(const char *msg) {
@@ -20,7 +23,10 @@ const char *ww_get_error(void) {
     return error_buffer;
 }
 
-// File type detection
+// ============================================================================
+// File Type Detection
+// ============================================================================
+
 ww_filetype_t ww_detect_filetype(const char *path) {
     if (!path) {
         set_error("NULL path provided");
@@ -75,31 +81,15 @@ ww_filetype_t ww_detect_filetype(const char *path) {
     return WW_TYPE_UNKNOWN;
 }
 
+// ============================================================================
+// Directory Scanning
+// ============================================================================
+
 // Helper function to check if a file is a supported image format
 static bool is_supported_image(const char *filename) {
-    const char *ext = strrchr(filename, '.');
-    if (!ext) return false;
-    
-    ext++; // Skip the dot
-    
-    // Check against all supported formats
-    return (strcasecmp(ext, "png") == 0 ||
-            strcasecmp(ext, "jpg") == 0 ||
-            strcasecmp(ext, "jpeg") == 0 ||
-            strcasecmp(ext, "webp") == 0 ||
-            strcasecmp(ext, "bmp") == 0 ||
-            strcasecmp(ext, "tga") == 0 ||
-            strcasecmp(ext, "pnm") == 0 ||
-            strcasecmp(ext, "pbm") == 0 ||
-            strcasecmp(ext, "pgm") == 0 ||
-            strcasecmp(ext, "ppm") == 0 ||
-            strcasecmp(ext, "tiff") == 0 ||
-            strcasecmp(ext, "tif") == 0 ||
-            strcasecmp(ext, "jxl") == 0 ||
-            strcasecmp(ext, "ff") == 0 ||
-            strcasecmp(ext, "gif") == 0 ||
-            strcasecmp(ext, "mp4") == 0 ||
-            strcasecmp(ext, "webm") == 0);
+    // Use existing filetype detection
+    ww_filetype_t type = ww_detect_filetype(filename);
+    return type != WW_TYPE_UNKNOWN;
 }
 
 // Recursive directory scanning helper
@@ -125,23 +115,19 @@ static void scan_directory_recursive(const char *dir_path, std::vector<std::stri
             continue;
         }
         
-        if (S_ISDIR(st.st_mode)) {
-            // Recursively scan subdirectories if requested
-            if (recursive) {
-                scan_directory_recursive(full_path.c_str(), files, recursive);
-            }
-        } else if (S_ISREG(st.st_mode)) {
-            // Check if it's a supported image format
-            if (is_supported_image(entry->d_name)) {
-                files.push_back(full_path);
-            }
+        if (S_ISDIR(st.st_mode) && recursive) {
+            // Recursively scan subdirectories
+            scan_directory_recursive(full_path.c_str(), files, recursive);
+        } else if (S_ISREG(st.st_mode) && is_supported_image(entry->d_name)) {
+            // Add supported image files
+            files.push_back(full_path);
         }
     }
     
     closedir(dir);
 }
 
-// Directory scanning implementation
+// Public API for directory scanning
 int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recursive) {
     if (!dir_path || !file_list) {
         set_error("NULL pointer provided");
@@ -214,5 +200,3 @@ void ww_free_file_list(ww_file_list_t *file_list) {
     file_list->count = 0;
 }
 
-// Wayland initialization, output listing, and wallpaper setting
-// are now implemented in wayland.cc
