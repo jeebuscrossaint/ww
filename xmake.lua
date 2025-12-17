@@ -52,6 +52,18 @@ target("ww")
         add_ldflags("-flto")
         add_cxxflags("-flto")
     end
+
+    -- Install man page
+    on_install(function (target)
+        os.cp("man/ww.1", "$(installdir)/share/man/man1/")
+    end)
+
+    -- Install shell completions
+    on_install(function (target)
+        os.cp("completions/ww.bash", "$(installdir)/share/bash-completion/completions/ww")
+        os.cp("completions/_ww", "$(installdir)/share/zsh/site-functions/_ww")
+        os.cp("completions/ww.fish", "$(installdir)/share/fish/vendor_completions.d/ww.fish")
+    end)
 target_end()
 
 -- Package requirements (xmake will try to find/install these)

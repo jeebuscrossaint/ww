@@ -1,23 +1,65 @@
 # ww - Universal Wayland Wallpaper Setter
 
-Fast wallpaper setter for Wayland compositors with support for images, videos, and slideshows.
+Fast wallpaper setter for Wayland compositors with support for images, videos, slideshows, and daemon mode.
 
 ## Features
 
-- Supports lots of image formats: PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld
-- Animated wallpapers (GIF, MP4, WebM)
-- Slideshow mode with transitions
-- Multi-monitor support
-- Works with wlroots-based compositors (sway, Hyprland, etc.)
+- **Extensive format support**: PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld
+- **Animated wallpapers**: GIF, MP4, WebM with looping support
+- **Slideshow mode**: Automatic wallpaper rotation with 16 transition effects
+- **Daemon mode**: Background service with auto-restore from cache
+- **High performance**: Up to 240 FPS transitions, bicubic scaling
+- **Multi-monitor**: Per-output configuration and caching
+- **Works with**: Sway, Hyprland, River, and other wlroots compositors
 
 ## Formats
 
 Static: PNG, JPEG, WebP, TIFF/TIF, JXL, BMP, TGA, PNM/PBM/PGM/PPM, Farbfeld  
 Animated: GIF, MP4, WebM, Animated WebP
 
-## Building
+## Installation
 
-### Quick start
+### Nix Flakes (Recommended)
+
+```bash
+# Try without installing
+nix run github:jeebuscrossaint/ww -- --help
+
+# Install to profile
+nix profile install github:jeebuscrossaint/ww
+
+# Build locally
+git clone https://github.com/jeebuscrossaint/ww.git
+cd ww
+nix build
+./result/bin/ww --version
+
+# Add to your NixOS configuration
+{
+  inputs.ww.url = "github:jeebuscrossaint/ww";
+  # ...
+  environment.systemPackages = [ inputs.ww.packages.${system}.default ];
+}
+
+# Or use in home-manager
+{
+  home.packages = [ inputs.ww.packages.${pkgs.system}.default ];
+}
+
+# Development shell with all dependencies
+nix develop github:jeebuscrossaint/ww
+```
+
+**What gets installed:**
+- Binary: `$out/bin/ww`
+- Man page: `$out/share/man/man1/ww.1.gz`
+- Bash completion: `$out/share/bash-completion/completions/ww`
+- Zsh completion: `$out/share/zsh/site-functions/_ww`
+- Fish completion: `$out/share/fish/vendor_completions.d/ww.fish`
+
+No xmake package manager dependencies - uses Nix packages directly!
+
+### Building from Source
 
 ```bash
 git clone https://github.com/jeebuscrossaint/ww.git
@@ -92,6 +134,33 @@ sudo xmake install -o /usr/local
 - **"wayland-scanner not found"** → Install wayland-protocols
 - **First build slow?** → xmake is downloading deps, subsequent builds are faster
 - **Package download fails?** → Try `xmake f --pkg=system` or install system packages
+
+### Shell Completions
+
+Shell completion scripts are available for bash, zsh, and fish:
+
+```bash
+# Bash
+sudo cp completions/ww.bash /usr/share/bash-completion/completions/ww
+
+# Zsh
+sudo cp completions/_ww /usr/share/zsh/site-functions/_ww
+
+# Fish
+sudo cp completions/ww.fish /usr/share/fish/vendor_completions.d/ww.fish
+```
+
+See `completions/README.md` for detailed installation instructions.
+
+### Man Page
+
+Install the man page:
+
+```bash
+sudo cp man/ww.1 /usr/share/man/man1/ww.1
+sudo mandb
+man ww
+```
 
 ## Usage
 
@@ -275,9 +344,16 @@ Rough CPU usage at 60 FPS:
 
 Works with wlroots-based compositors (needs `wlr-layer-shell-unstable-v1`).
 
+## Documentation
+
+- [Installation Guide](INSTALL.md) - Detailed installation instructions
+- [Daemon Mode](docs/DAEMON_MODE.md) - Background daemon documentation
+- [Shell Completions](completions/README.md) - Completion installation
+- Man page: `man ww` (after installation)
+
 ## Contributing
 
-PRs welcome!
+PRs welcome! See [issues](https://github.com/jeebuscrossaint/ww/issues) for ideas.
 
 ## License
 
