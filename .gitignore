@@ -43,3 +43,10 @@ build/
 
 # debug information files
 *.dwo
+
+# IDE and clangd
+compile_commands.json
+.cache/
+
+# Test files
+test_images/

@@ -1,0 +1,56 @@
+# clangd configuration for ww project
+
+# Use compile_commands.json from xmake
+# Generate with: xmake project -k compile_commands
+CompileFlags:
+  # Use compile_commands.json from project root
+  CompilationDatabase: .
+
+  # Additional include paths
+  Add:
+    - "-Iinc"
+    - "-Ibuild/protocols"
+    - "-I/usr/include/wayland"
+
+  # Remove problematic flags
+  Remove:
+    - "-fno-exceptions"
+    - "-fno-rtti"
+    - "-Wno-gnu-line-marker"
+
+# Index configuration
+Index:
+  Background: Build
+  StandardLibrary: Yes
+
+# Diagnostics configuration
+Diagnostics:
+  ClangTidy:
+    Add:
+      - modernize-*
+      - performance-*
+      - readability-*
+    Remove:
+      - modernize-use-trailing-return-type
+      - readability-identifier-length
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
+# Code completion
+Completion:
+  AllScopes: Yes
+
+# Hover information
+Hover:
+  ShowAKA: Yes
+
+# InlayHints
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes
+
+# Semantic tokens
+SemanticTokens:
+  DisabledKinds: []
+  DisabledModifiers: []
