@@ -10,13 +10,13 @@ echo ""
 
 WW="./build/linux/x86_64/release/ww"
 
-if [ ! -f "$WW" ]; then
+if [[ ! -f "${WW}" ]]; then
     echo "Error: ww binary not found. Please build first with 'xmake build'"
     exit 1
 fi
 
 # Check if images directory is provided
-if [ -z "$1" ]; then
+if [[ -z "$1" ]]; then
     echo "Usage: $0 <path-to-images>"
     echo ""
     echo "Example: $0 ~/Pictures/wallpapers/"
@@ -24,13 +24,13 @@ if [ -z "$1" ]; then
     exit 1
 fi
 
-IMAGES="$@"
+IMAGES=("$@")
 DURATION=2.0
 FPS=60
 INTERVAL=4
 
 echo "Settings:"
-echo "  Images: $IMAGES"
+echo "  Images: ${IMAGES[*]}"
 echo "  Transition duration: ${DURATION}s"
 echo "  Frame rate: ${FPS} FPS"
 echo "  Interval: ${INTERVAL}s"
@@ -64,19 +64,19 @@ run_demo() {
     local transition="$1"
     local description="$2"
 
-    echo "[$transition]"
-    echo "  $description"
+    echo "[${transition}]"
+    echo "  ${description}"
     echo "  Running for 15 seconds..."
     echo ""
 
-    timeout 15s $WW -S -m fill -t "$transition" -d $DURATION -f $FPS -i $INTERVAL $IMAGES 2>/dev/null
+    timeout 15s "${WW}" -S -m fill -t "${transition}" -d "${DURATION}" -f "${FPS}" -i "${INTERVAL}" "${IMAGES[@]}" 2>/dev/null
 
     echo ""
 }
 
 # Run through all transitions
 for item in "${TRANSITIONS[@]}"; do
-    IFS=':' read -r transition description <<< "$item"
+    IFS=':' read -r transition description <<< "${item}"
     run_demo "$transition" "$description"
     sleep 0.5
 done
@@ -88,19 +88,19 @@ echo ""
 echo "Try these commands yourself:"
 echo ""
 echo "# Smooth 60 FPS fade"
-echo "$WW -S -m fill -t fade -d 2.0 -f 60 -i 300 $IMAGES"
+echo "${WW} -S -m fill -t fade -d 2.0 -f 60 -i 300 ${IMAGES[*]}"
 echo ""
 echo "# Cool zoom effect"
-echo "$WW -S -m fill -t zoom-in -d 2.5 -f 60 -i 300 $IMAGES"
+echo "${WW} -S -m fill -t zoom-in -d 2.5 -f 60 -i 300 ${IMAGES[*]}"
 echo ""
 echo "# Circle wipe"
-echo "$WW -S -m fill -t circle-open -d 1.5 -f 60 -i 300 $IMAGES"
+echo "${WW} -S -m fill -t circle-open -d 1.5 -f 60 -i 300 ${IMAGES[*]}"
 echo ""
 echo "# Pixelate effect"
-echo "$WW -S -m fill -t pixelate -d 2.0 -f 60 -i 300 $IMAGES"
+echo "${WW} -S -m fill -t pixelate -d 2.0 -f 60 -i 300 ${IMAGES[*]}"
 echo ""
 echo "# Random order with dissolve"
-echo "$WW -S -R -r -m fill -t dissolve -d 2.0 -f 60 -i 300 $IMAGES"
+echo "${WW} -S -R -r -m fill -t dissolve -d 2.0 -f 60 -i 300 ${IMAGES[*]}"
 echo ""
 
 # Quick comparison demo
@@ -111,10 +111,10 @@ echo ""
 echo "Run these in separate terminals:"
 echo ""
 echo "# Terminal 1 (Fade)"
-echo "$WW -S -m fill -t fade -d 2.0 -f 60 -i 10 $IMAGES"
+echo "${WW} -S -m fill -t fade -d 2.0 -f 60 -i 10 ${IMAGES[*]}"
 echo ""
 echo "# Terminal 2 (Circle)"
-echo "$WW -S -m fill -t circle-open -d 2.0 -f 60 -i 10 $IMAGES"
+echo "${WW} -S -m fill -t circle-open -d 2.0 -f 60 -i 10 ${IMAGES[*]}"
 echo ""
 
 exit 0

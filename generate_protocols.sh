@@ -52,7 +52,7 @@ echo "Fixing C++ compatibility..."
 
 # For the layer shell header, we need to handle the 'namespace' parameter
 # The easiest fix is to use sed to rename it in the generated header
-if [ -f "${BUILD_DIR}/wlr-layer-shell-unstable-v1-client-protocol.h" ]; then
+if [[ -f "${BUILD_DIR}/wlr-layer-shell-unstable-v1-client-protocol.h" ]]; then
     sed -i 's/const char \*namespace)/const char *name_space)/g' \
         "${BUILD_DIR}/wlr-layer-shell-unstable-v1-client-protocol.h"
     sed -i 's/, namespace)/, name_space)/g' \
@@ -60,7 +60,7 @@ if [ -f "${BUILD_DIR}/wlr-layer-shell-unstable-v1-client-protocol.h" ]; then
 fi
 
 # Also fix the .c file
-if [ -f "${BUILD_DIR}/wlr-layer-shell-unstable-v1-protocol.c" ]; then
+if [[ -f "${BUILD_DIR}/wlr-layer-shell-unstable-v1-protocol.c" ]]; then
     sed -i 's/const char \*namespace)/const char *name_space)/g' \
         "${BUILD_DIR}/wlr-layer-shell-unstable-v1-protocol.c"
     sed -i 's/, namespace)/, name_space)/g' \
