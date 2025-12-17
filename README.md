@@ -23,7 +23,7 @@ A fast, optimized, and universal wallpaper setter for Wayland compositors.
 ### Quick Start (TL;DR)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/jeebuscrossaint/ww.git
 cd ww
 ./generate_protocols.sh   # Generate Wayland protocol bindings
 xmake                      # Build the project (auto-installs most dependencies)
@@ -32,23 +32,7 @@ xmake install              # Install to ~/.local/bin (or use sudo for system-wid
 
 ### Prerequisites
 
-**1. Install xmake build system:**
-```bash
-curl -fsSL https://xmake.io/shget.text | bash
-```
-
-Or via your package manager:
-```bash
-# Arch Linux
-sudo pacman -S xmake
-
-# Ubuntu/Debian (add PPA first)
-sudo add-apt-repository ppa:xmake-io/xmake
-sudo apt update
-sudo apt install xmake
-```
-
-**2. Install Wayland development libraries:**
+First install the xmake build system.
 
 xmake will automatically download and build most dependencies (stb, libtiff, libwebp, libjxl, ffmpeg).
 You only need to install Wayland system libraries:
@@ -57,6 +41,9 @@ You only need to install Wayland system libraries:
 # Arch Linux
 sudo pacman -S wayland wayland-protocols
 
+# Gentoo
+sudo emerge -av media-libs/wayland media-libs/wayland-protocols
+
 # Ubuntu/Debian
 sudo apt install libwayland-dev wayland-protocols
 
@@ -64,22 +51,8 @@ sudo apt install libwayland-dev wayland-protocols
 sudo dnf install wayland-devel wayland-protocols-devel
 ```
 
-**Note:** If xmake has trouble auto-installing packages, you can manually install them:
-```bash
-# Arch Linux
-sudo pacman -S ffmpeg libwebp libtiff libjxl
-
-# Ubuntu/Debian
-sudo apt install libavcodec-dev libavformat-dev libswscale-dev \
-                 libwebp-dev libtiff-dev libjxl-dev
-
-# Fedora
-sudo dnf install ffmpeg-devel libwebp-devel libtiff-devel libjxl-devel
-```
 
 ### Build Instructions
-
-**Step 1: Generate Wayland Protocol Bindings**
 
 Before building, you must generate the Wayland protocol C bindings from the XML files:
 
@@ -97,7 +70,7 @@ The script also automatically fixes C++ keyword collisions (the `wlr-layer-shell
 
 **Note:** You only need to run this once (or after protocol XML files are updated).
 
-**Step 2: Build with xmake**
+Proceed to build with xamake.
 
 ```bash
 # Default build (release mode)
@@ -256,6 +229,7 @@ Control the smoothness vs performance trade-off with the FPS option:
 - **15 FPS** - Lower CPU usage, good for older systems
 - **30 FPS** (default) - Balanced smoothness and performance
 - **60 FPS** - Silky smooth transitions, higher CPU usage
+- **120 FPS** - Ultra-smooth transitions, highest CPU usage
 
 ```bash
 # Smooth 60 FPS fade
@@ -301,56 +275,6 @@ Built with performance in mind:
 Currently supports Wayland compositors that implement:
 - `wlr-layer-shell-unstable-v1` (wlroots-based compositors)
 
-Tested on:
-- [ ] Sway
-- [ ] Hyprland
-- [ ] River
-- [ ] Wayfire
-
-## Development
-
-```bash
-# Run after building
-xmake run ww
-
-# Run with arguments
-xmake run ww -- --help
-
-# Run tests (when implemented)
-xmake test
-```
-
-## Project Structure
-
-```
-ww/
-├── inc/           # Header files
-├── src/           # Source files
-├── xmake.lua      # Build configuration
-└── README.md      # This file
-```
-
-## TODO
-
-- [x] Implement Wayland protocol handling
-- [x] Image decoding (PNG, JPEG, WebP, TIFF, JXL, BMP, TGA, PNM, Farbfeld)
-- [x] Video decoding (MP4, WebM via FFmpeg)
-- [x] GIF animation support
-- [x] Slideshow mode with transitions
-- [x] Directory scanning (recursive)
-- [x] Multiple scaling modes
-- [x] High-quality bicubic/bilinear scaling
-- [x] 14+ transition effects (fade, slide, zoom, circle, wipe, dissolve, pixelate)
-- [x] Configurable transition FPS
-- [ ] GPU acceleration (Vulkan/OpenGL ES) - see GPU_ACCELERATION.md
-- [ ] Configuration file support
-- [ ] EXIF orientation support
-- [ ] Hardware video decoding (VAAPI/VDPAU)
-- [ ] Time-based wallpaper switching
-- [ ] Watch mode for file/directory changes
-- [ ] Playlist file support
-- [ ] Image filters (blur, brightness, saturation)
-
 ## Contributing
 
 Contributions welcome! This project aims to be the fastest and most feature-complete Wayland wallpaper setter.
@@ -361,4 +285,4 @@ See LICENSE file for details.
 
 ## Acknowledgments
 
-- Inspired by existing tools like swaybg,
+- Inspired by existing tools like swaybg, awww, mpvpaper, and the billion other ones. I am one in a krillion.
