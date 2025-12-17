@@ -26,7 +26,6 @@ target("ww")
     add_includedirs("inc")
     add_includedirs("build/protocols")
     add_files("src/*.cc")
-    add_files("src/*.c")
 
     -- Wayland dependencies
     add_packages("wayland", "wayland-protocols")

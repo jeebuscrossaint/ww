@@ -156,6 +156,14 @@ static void output_geometry(void *data, struct wl_output *wl_output,
                            int32_t subpixel,
                            const char *make, const char *model,
                            int32_t transform) {
+    (void)wl_output;
+    (void)x;
+    (void)y;
+    (void)physical_width;
+    (void)physical_height;
+    (void)subpixel;
+    (void)transform;
+    
     struct ww_output *output = (struct ww_output*)data;
     output->make = strdup(make);
     output->model = strdup(model);
@@ -164,6 +172,7 @@ static void output_geometry(void *data, struct wl_output *wl_output,
 static void output_mode(void *data, struct wl_output *wl_output,
                        uint32_t flags, int32_t width, int32_t height,
                        int32_t refresh) {
+    (void)wl_output;
     struct ww_output *output = (struct ww_output*)data;
     
     if (flags & WL_OUTPUT_MODE_CURRENT) {
@@ -174,11 +183,13 @@ static void output_mode(void *data, struct wl_output *wl_output,
 }
 
 static void output_done(void *data, struct wl_output *wl_output) {
+    (void)wl_output;
     struct ww_output *output = (struct ww_output*)data;
     output->configured = true;
 }
 
 static void output_scale(void *data, struct wl_output *wl_output, int32_t factor) {
+    (void)wl_output;
     struct ww_output *output = (struct ww_output*)data;
     output->scale = factor;
 }
@@ -209,13 +220,15 @@ static const struct wl_output_listener output_listener = {
 // Layer surface callbacks
 static void layer_surface_configure(void *data, struct zwlr_layer_surface_v1 *layer_surface,
                                     uint32_t serial, uint32_t width, uint32_t height) {
+    (void)width;
+    (void)height;
     struct ww_output *output = (struct ww_output*)data;
     zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
     output->configured = true;
 }
 
 static void layer_surface_closed(void *data, struct zwlr_layer_surface_v1 *layer_surface) {
-    struct ww_output *output = (struct ww_output*)data;
+    (void)data;
     (void)layer_surface;
 }
 
@@ -396,6 +409,7 @@ static void frame_callback_handler(void *data, struct wl_callback *callback, uin
 static void registry_global(void *data, struct wl_registry *registry,
                            uint32_t name, const char *interface,
                            uint32_t version) {
+    (void)version;
     struct ww_state *state = (struct ww_state*)data;
     
     if (strcmp(interface, wl_compositor_interface.name) == 0) {
@@ -421,6 +435,9 @@ static void registry_global(void *data, struct wl_registry *registry,
 
 static void registry_global_remove(void *data, struct wl_registry *registry,
                                   uint32_t name) {
+    (void)data;
+    (void)registry;
+    (void)name;
     // TODO: Handle output removal
 }
 

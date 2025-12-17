@@ -216,8 +216,6 @@ static void apply_zoom_in_transition(ww_transition_state *state, float progress)
     float t = ease_in_out(progress);
     float scale = 1.0f + t * 0.5f; // Zoom from 1.0 to 1.5
     
-    size_t pixel_count = state->width * state->height;
-    
     for (int y = 0; y < state->height; y++) {
         for (int x = 0; x < state->width; x++) {
             size_t dst_idx = (y * state->width + x) * 4;
