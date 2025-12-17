@@ -20,9 +20,19 @@ A fast, optimized, and universal wallpaper setter for Wayland compositors.
 
 ## Building
 
+### Quick Start (TL;DR)
+
+```bash
+git clone <repo-url>
+cd ww
+./generate_protocols.sh   # Generate Wayland protocol bindings
+xmake                      # Build the project
+xmake install              # Install to ~/.local/bin (or use sudo for system-wide)
+```
+
 ### Prerequisites
 
-Install xmake:
+**1. Install xmake build system:**
 ```bash
 curl -fsSL https://xmake.io/shget.text | bash
 ```
@@ -38,13 +48,11 @@ sudo apt update
 sudo apt install xmake
 ```
 
-### Dependencies
-
-xmake will automatically handle most dependencies, but you may need system packages:
+**2. Install system dependencies:**
 
 ```bash
 # Arch Linux
-sudo pacman -S wayland wayland-protocols ffmpeg libpng libjpeg-turbo libwebp
+sudo pacman -S wayland wayland-protocols ffmpeg libpng libjpeg-turbo libwebp libtiff
 
 # Ubuntu/Debian
 sudo apt install libwayland-dev wayland-protocols libavcodec-dev libavformat-dev \
@@ -57,17 +65,37 @@ sudo dnf install wayland-devel wayland-protocols-devel ffmpeg-devel \
                  libjxl-devel
 ```
 
-### Build Commands
+### Build Instructions
+
+**Step 1: Generate Wayland Protocol Bindings**
+
+Before building, you must generate the Wayland protocol C bindings from the XML files:
 
 ```bash
-# Configure and build
+./generate_protocols.sh
+```
+
+This script uses `wayland-scanner` to generate:
+- `build/protocols/wlr-layer-shell-unstable-v1-client-protocol.h`
+- `build/protocols/wlr-layer-shell-unstable-v1-protocol.c`
+- `build/protocols/xdg-shell-client-protocol.h`
+- `build/protocols/xdg-shell-protocol.c`
+
+The script also automatically fixes C++ keyword collisions (the `wlr-layer-shell` protocol uses `namespace` as a parameter name, which is a C++ keyword).
+
+**Note:** You only need to run this once (or after protocol XML files are updated).
+
+**Step 2: Build with xmake**
+
+```bash
+# Default build (release mode)
 xmake
 
-# Build release version (optimized)
+# Or explicitly set release mode (optimized, stripped)
 xmake f -m release
 xmake
 
-# Build debug version
+# Debug build (with symbols, no optimization)
 xmake f -m debug
 xmake
 
@@ -75,12 +103,24 @@ xmake
 xmake clean
 xmake
 
-# Install
+# Install to ~/.local/bin
 xmake install
 
-# Install to custom location
-xmake install -o /usr/local
+# Install system-wide
+sudo xmake install -o /usr/local
 ```
+
+### Build Troubleshooting
+
+**Error: "cannot find protocol header files"**
+- Run `./generate_protocols.sh` first to generate the protocol bindings
+
+**Error: "wayland-scanner not found"**
+- Install `wayland-protocols` package for your distro
+
+**Error: Missing image format libraries**
+- Install the system dependencies listed above
+- xmake will automatically fetch some packages, but system libraries are preferred
 
 ## Usage
 
