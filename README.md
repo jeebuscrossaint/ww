@@ -191,8 +191,8 @@ ww -S -t slide-left -d 1.5 ~/wallpapers/
 - **zoom-out** - Zoom out while fading to new image
 
 **Circle:**
-- **circle-open** - Circular reveal from center outward
-- **circle-close** - Circular collapse from edges to center
+- **circle-open** - Circular reveal from random position outward
+- **circle-close** - Circular collapse from random position inward
 
 **Wipe:**
 - **wipe-left** - Curtain wipe from left to right

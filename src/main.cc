@@ -73,7 +73,7 @@ static void print_usage(const char *prog_name) {
     std::cout << "                         Wipe: wipe-left, wipe-right, wipe-up, wipe-down" << std::endl;
     std::cout << "                         Effects: dissolve, pixelate" << std::endl;
     std::cout << "  -d, --duration <sec>   Transition duration in seconds (default: 1.0)" << std::endl;
-    std::cout << "  -f, --fps <fps>        Transition frame rate (default: 30, max: 60)" << std::endl;
+    std::cout << "  -f, --fps <fps>        Transition frame rate (default: 30, max: 240)" << std::endl;
     std::cout << "  -L, --list-outputs     List available outputs" << std::endl;
     std::cout << "  -v, --version          Show version information" << std::endl;
     std::cout << "  -h, --help             Show this help message" << std::endl;
@@ -268,8 +268,8 @@ int main(int argc, char *argv[]) {
                 break;
             case 'f':
                 transition_fps = atoi(optarg);
-                if (transition_fps < 1 || transition_fps > 120) {
-                    std::cerr << "Error: Invalid FPS (must be between 1 and 120)" << std::endl;
+                if (transition_fps < 1 || transition_fps > 240) {
+                    std::cerr << "Error: Invalid FPS (must be between 1 and 240)" << std::endl;
                     return 1;
                 }
                 break;

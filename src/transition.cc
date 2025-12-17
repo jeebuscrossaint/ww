@@ -20,6 +20,9 @@ struct ww_transition_state {
     int width;
     int height;
     int stride;
+    
+    int circle_center_x;
+    int circle_center_y;
 };
 
 ww_transition_state *ww_transition_create(ww_transition_type_t type, float duration,
@@ -74,6 +77,11 @@ void ww_transition_destroy(ww_transition_state *state) {
     free(state);
 }
 
+static void init_random_circle_center(ww_transition_state *state) {
+    state->circle_center_x = rand() % state->width;
+    state->circle_center_y = rand() % state->height;
+}
+
 void ww_transition_start(ww_transition_state *state, const uint8_t *old_data,
                          const uint8_t *new_data) {
     if (!state || !old_data || !new_data) return;
@@ -85,6 +93,10 @@ void ww_transition_start(ww_transition_state *state, const uint8_t *old_data,
     
     state->current_time = 0.0f;
     state->active = true;
+    
+    if (state->type == WW_TRANSITION_CIRCLE_OPEN || state->type == WW_TRANSITION_CIRCLE_CLOSE) {
+        init_random_circle_center(state);
+    }
 }
 
 static float ease_in_out(float t) {
@@ -263,11 +275,18 @@ static void apply_zoom_out_transition(ww_transition_state *state, float progress
 
 static void apply_circle_open_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
-    float max_radius = sqrtf(state->width * state->width + state->height * state->height) / 2.0f;
-    float radius = t * max_radius;
     
-    int center_x = state->width / 2;
-    int center_y = state->height / 2;
+    int center_x = state->circle_center_x;
+    int center_y = state->circle_center_y;
+    
+    // Calculate max radius needed to reach farthest corner from random center
+    float dist_tl = sqrtf(center_x * center_x + center_y * center_y);
+    float dist_tr = sqrtf((state->width - center_x) * (state->width - center_x) + center_y * center_y);
+    float dist_bl = sqrtf(center_x * center_x + (state->height - center_y) * (state->height - center_y));
+    float dist_br = sqrtf((state->width - center_x) * (state->width - center_x) + (state->height - center_y) * (state->height - center_y));
+    
+    float max_radius = fmaxf(fmaxf(dist_tl, dist_tr), fmaxf(dist_bl, dist_br));
+    float radius = max_radius * t;
     
     for (int y = 0; y < state->height; y++) {
         for (int x = 0; x < state->width; x++) {
@@ -288,11 +307,18 @@ static void apply_circle_open_transition(ww_transition_state *state, float progr
 
 static void apply_circle_close_transition(ww_transition_state *state, float progress) {
     float t = ease_in_out(progress);
-    float max_radius = sqrtf(state->width * state->width + state->height * state->height) / 2.0f;
-    float radius = (1.0f - t) * max_radius;
     
-    int center_x = state->width / 2;
-    int center_y = state->height / 2;
+    int center_x = state->circle_center_x;
+    int center_y = state->circle_center_y;
+    
+    // Calculate max radius needed to reach farthest corner from random center
+    float dist_tl = sqrtf(center_x * center_x + center_y * center_y);
+    float dist_tr = sqrtf((state->width - center_x) * (state->width - center_x) + center_y * center_y);
+    float dist_bl = sqrtf(center_x * center_x + (state->height - center_y) * (state->height - center_y));
+    float dist_br = sqrtf((state->width - center_x) * (state->width - center_x) + (state->height - center_y) * (state->height - center_y));
+    
+    float max_radius = fmaxf(fmaxf(dist_tl, dist_tr), fmaxf(dist_bl, dist_br));
+    float radius = max_radius * (1.0f - t);
     
     for (int y = 0; y < state->height; y++) {
         for (int x = 0; x < state->width; x++) {
