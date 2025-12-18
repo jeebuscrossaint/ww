@@ -330,6 +330,52 @@ int main(int argc, char *argv[])
     }
     
     if (daemon_mode && optind >= argc && !color_only) {
+        // try to restore slideshow state first
+        bool ss_enabled = false;
+        int ss_interval = 300;
+        bool ss_random = false;
+        bool ss_recursive = false;
+        int ss_transition = 0;
+        float ss_duration = 1.0f;
+        int ss_fps = 30;
+        char** ss_files = nullptr;
+        int ss_file_count = 0;
+        int ss_current_index = 0;
+        
+        const char* restore_output = config.output_name ? config.output_name : "all";
+        
+        if (ww_cache_load_slideshow(restore_output, &ss_enabled, &ss_interval,
+                                     &ss_random, &ss_recursive, &ss_transition,
+                                     &ss_duration, &ss_fps, &ss_files,
+                                     &ss_file_count, &ss_current_index) == 0 && ss_enabled) {
+            // restore slideshow mode
+            slideshow_mode = true;
+            slideshow_interval = ss_interval;
+            random_mode = ss_random;
+            transition_type = (ww_transition_type_t)ss_transition;
+            transition_duration = ss_duration;
+            transition_fps = ss_fps;
+            
+            for (int i = 0; i < ss_file_count; i++) {
+                files.push_back(ss_files[i]);
+                free(ss_files[i]);
+            }
+            free(ss_files);
+            
+            if (!files.empty()) {
+                config.file_path = files[ss_current_index % files.size()].c_str();
+                config.transition = transition_type;
+                config.transition_duration = transition_duration;
+                config.transition_fps = transition_fps;
+                config.type = ww_detect_filetype(config.file_path);
+                
+                if (ww_set_wallpaper_no_loop(&config) == 0) {
+                    goto slideshow_loop;
+                }
+            }
+        }
+        
+        // no slideshow, just restore static wallpaper
         ww_output_t *outputs = nullptr;
         int output_count = 0;
         
@@ -430,7 +476,17 @@ int main(int argc, char *argv[])
         }
     }
 
+    // save slideshow state if in slideshow mode
     if (slideshow_mode) {
+        const char* ss_output = config.output_name ? config.output_name : "all";
+        std::vector<const char*> file_ptrs;
+        for (const auto& f : files) {
+            file_ptrs.push_back(f.c_str());
+        }
+        ww_cache_save_slideshow(ss_output, true, slideshow_interval, random_mode,
+                                recursive_mode, (int)transition_type, transition_duration,
+                                transition_fps, file_ptrs.data(), file_ptrs.size(), 0);
+        
         if (ww_set_wallpaper_no_loop(&config) != 0) {
             std::cerr << "Error: Failed to set wallpaper: " << ww_get_error() << std::endl;
             ww_cleanup();
@@ -450,6 +506,9 @@ int main(int argc, char *argv[])
         }
     }
 
+
+    
+slideshow_loop:
     const char *transition_name = "none";
     switch (transition_type) {
         case WW_TRANSITION_FADE: transition_name = "fade"; break;
@@ -514,6 +573,7 @@ int main(int argc, char *argv[])
                 }
                 
                 if (ww_set_wallpaper_no_loop(&config) == 0) {
+                    // save current state
                     if (config.output_name) {
                         ww_cache_save(config.output_name, &config);
                     } else {
@@ -526,6 +586,17 @@ int main(int argc, char *argv[])
                             free(outputs);
                         }
                     }
+                    
+                    // save slideshow state with current index
+                    const char* ss_output = config.output_name ? config.output_name : "all";
+                    std::vector<const char*> file_ptrs;
+                    for (const auto& f : files) {
+                        file_ptrs.push_back(f.c_str());
+                    }
+                    ww_cache_save_slideshow(ss_output, true, slideshow_interval, random_mode,
+                                            recursive_mode, (int)transition_type, transition_duration,
+                                            transition_fps, file_ptrs.data(), file_ptrs.size(), 
+                                            current_index);
                 } else if (!daemon_mode) {
                     std::cerr << "Warning: Failed to set wallpaper: " << ww_get_error() << std::endl;
                 }
