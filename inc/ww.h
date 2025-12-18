@@ -129,20 +129,6 @@ typedef struct
 int ww_scan_directory(const char *dir_path, ww_file_list_t *file_list, bool recursive);
 void ww_free_file_list(ww_file_list_t *file_list);
 
-int ww_cache_save(const char *output_name, const ww_config_t *config);
-int ww_cache_load(const char *output_name, ww_config_t *config);
-void ww_cache_clear(const char *output_name);
-
-// slideshow state caching
-int ww_cache_save_slideshow(const char* output_name, bool enabled, int interval,
-                            bool random, bool recursive, int mode, int transition,
-                            float duration, int fps, const char** files,
-                            int file_count, int current_index);
-int ww_cache_load_slideshow(const char* output_name, bool* enabled, int* interval,
-                            bool* random, bool* recursive, int* mode, int* transition,
-                            float* duration, int* fps, char*** files,
-                            int* file_count, int* current_index);
-
 const char *ww_get_error(void);
 
 #ifdef __cplusplus

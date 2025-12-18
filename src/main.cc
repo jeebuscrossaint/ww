@@ -76,7 +76,7 @@ void print_usage(const char *prog_name) {
     std::cout << "                         Effects: dissolve, pixelate\n";
     std::cout << "  -d, --duration <sec>   Transition duration in seconds (default: 1.0)\n";
     std::cout << "  -f, --fps <fps>        Transition frame rate (default: 30, max: 240)\n";
-    std::cout << "  -D, --daemon           Run in background and restore wallpapers from cache\n";
+    std::cout << "  -D, --daemon           Fork to background\n";
     std::cout << "  -L, --list-outputs     List available outputs\n";
     std::cout << "  -v, --version          Show version information\n";
     std::cout << "  -h, --help             Show this help message\n";
@@ -307,16 +307,14 @@ int main(int argc, char *argv[])
     if (daemon_mode) {
         pid_t pid = fork();
         if (pid < 0) {
-            std::cerr << "Error: Failed to fork to background" << std::endl;
+            std::cerr << "Error: Failed to fork" << std::endl;
             ww_cleanup();
             return 1;
         }
         if (pid > 0) {
-            std::cout << "Started ww daemon (PID: " << pid << ")" << std::endl;
             return 0;
         }
         
-        umask(0);
         setsid();
         close(STDIN_FILENO);
         close(STDOUT_FILENO);
@@ -325,82 +323,6 @@ int main(int argc, char *argv[])
 
     if (list_mode) {
         list_outputs();
-        ww_cleanup();
-        return 0;
-    }
-    
-    if (daemon_mode && optind >= argc && !color_only) {
-        // try to restore slideshow state first
-        bool ss_enabled = false;
-        int ss_interval = 300;
-        bool ss_random = false;
-        bool ss_recursive = false;
-        int ss_mode = 0;
-        int ss_transition = 0;
-        float ss_duration = 1.0f;
-        int ss_fps = 30;
-        char** ss_files = nullptr;
-        int ss_file_count = 0;
-        int ss_current_index = 0;
-        
-        const char* restore_output = config.output_name ? config.output_name : "all";
-        
-        if (ww_cache_load_slideshow(restore_output, &ss_enabled, &ss_interval,
-                                     &ss_random, &ss_recursive, &ss_mode, &ss_transition,
-                                     &ss_duration, &ss_fps, &ss_files,
-                                     &ss_file_count, &ss_current_index) == 0 && ss_enabled) {
-            // restore slideshow mode
-            slideshow_mode = true;
-            slideshow_interval = ss_interval;
-            random_mode = ss_random;
-            config.mode = (ww_scale_mode_t)ss_mode;
-            transition_type = (ww_transition_type_t)ss_transition;
-            transition_duration = ss_duration;
-            transition_fps = ss_fps;
-            
-            for (int i = 0; i < ss_file_count; i++) {
-                files.push_back(ss_files[i]);
-                free(ss_files[i]);
-            }
-            free(ss_files);
-            
-            if (!files.empty()) {
-                config.file_path = files[ss_current_index % files.size()].c_str();
-                config.transition = transition_type;
-                config.transition_duration = transition_duration;
-                config.transition_fps = transition_fps;
-                config.type = ww_detect_filetype(config.file_path);
-                
-                if (ww_set_wallpaper_no_loop(&config) == 0) {
-                    goto slideshow_loop;
-                }
-            }
-        }
-        
-        // no slideshow, just restore static wallpaper
-        ww_output_t *outputs = nullptr;
-        int output_count = 0;
-        
-        if (ww_list_outputs(&outputs, &output_count) == 0) {
-            for (int i = 0; i < output_count; i++) {
-                ww_config_t cached_config = config;
-                int load_result = ww_cache_load(outputs[i].name, &cached_config);
-                if (load_result != 0) {
-                    load_result = ww_cache_load("all", &cached_config);
-                }
-                if (load_result == 0 && cached_config.file_path && cached_config.file_path[0] != '\0') {
-                    cached_config.output_name = outputs[i].name;
-                    ww_set_wallpaper_no_loop(&cached_config);
-                }
-            }
-            free(outputs);
-        }
-        
-        while (running) {
-            ww_dispatch_events();
-            usleep(16666);
-        }
-        
         ww_cleanup();
         return 0;
     }
@@ -464,32 +386,8 @@ int main(int argc, char *argv[])
             return 1;
         }
     }
-    
-    if (config.output_name) {
-        ww_cache_save(config.output_name, &config);
-    } else {
-        ww_output_t *outputs = nullptr;
-        int output_count = 0;
-        if (ww_list_outputs(&outputs, &output_count) == 0) {
-            for (int i = 0; i < output_count; i++) {
-                ww_cache_save(outputs[i].name, &config);
-            }
-            free(outputs);
-        }
-    }
 
-    // save slideshow state if in slideshow mode
     if (slideshow_mode) {
-        const char* ss_output = config.output_name ? config.output_name : "all";
-        std::vector<const char*> file_ptrs;
-        for (const auto& f : files) {
-            file_ptrs.push_back(f.c_str());
-        }
-        ww_cache_save_slideshow(ss_output, true, slideshow_interval, random_mode,
-                                recursive_mode, (int)config.mode, (int)transition_type, 
-                                transition_duration, transition_fps, file_ptrs.data(), 
-                                file_ptrs.size(), 0);
-        
         if (ww_set_wallpaper_no_loop(&config) != 0) {
             std::cerr << "Error: Failed to set wallpaper: " << ww_get_error() << std::endl;
             ww_cleanup();
@@ -504,14 +402,12 @@ int main(int argc, char *argv[])
         
         if (!daemon_mode) {
             std::cout << "Wallpaper set successfully!" << std::endl;
-            ww_cleanup();
-            return 0;
         }
+        ww_cleanup();
+        return 0;
     }
 
 
-    
-slideshow_loop:
     const char *transition_name = "none";
     switch (transition_type) {
         case WW_TRANSITION_FADE: transition_name = "fade"; break;
@@ -574,35 +470,7 @@ slideshow_loop:
                 if (!daemon_mode) {
                     std::cout << "Switching to: " << files[current_index] << std::endl;
                 }
-                
-                if (ww_set_wallpaper_no_loop(&config) == 0) {
-                    // save current state
-                    if (config.output_name) {
-                        ww_cache_save(config.output_name, &config);
-                    } else {
-                        ww_output_t *outputs = nullptr;
-                        int output_count = 0;
-                        if (ww_list_outputs(&outputs, &output_count) == 0) {
-                            for (int i = 0; i < output_count; i++) {
-                                ww_cache_save(outputs[i].name, &config);
-                            }
-                            free(outputs);
-                        }
-                    }
-                    
-                    // save slideshow state with current index
-                    const char* ss_output = config.output_name ? config.output_name : "all";
-                    std::vector<const char*> file_ptrs;
-                    for (const auto& f : files) {
-                        file_ptrs.push_back(f.c_str());
-                    }
-                    ww_cache_save_slideshow(ss_output, true, slideshow_interval, random_mode,
-                                            recursive_mode, (int)config.mode, (int)transition_type, 
-                                            transition_duration, transition_fps, file_ptrs.data(), 
-                                            file_ptrs.size(), current_index);
-                } else if (!daemon_mode) {
-                    std::cerr << "Warning: Failed to set wallpaper: " << ww_get_error() << std::endl;
-                }
+                ww_set_wallpaper_no_loop(&config);
             }
 
             alarm(slideshow_interval);
