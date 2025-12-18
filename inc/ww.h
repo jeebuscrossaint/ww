@@ -135,11 +135,11 @@ void ww_cache_clear(const char *output_name);
 
 // slideshow state caching
 int ww_cache_save_slideshow(const char* output_name, bool enabled, int interval,
-                            bool random, bool recursive, int transition,
+                            bool random, bool recursive, int mode, int transition,
                             float duration, int fps, const char** files,
                             int file_count, int current_index);
 int ww_cache_load_slideshow(const char* output_name, bool* enabled, int* interval,
-                            bool* random, bool* recursive, int* transition,
+                            bool* random, bool* recursive, int* mode, int* transition,
                             float* duration, int* fps, char*** files,
                             int* file_count, int* current_index);
 

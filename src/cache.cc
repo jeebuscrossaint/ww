@@ -86,7 +86,7 @@ int ww_cache_save(const char* output_name, const ww_config_t* config)
 }
 
 int ww_cache_save_slideshow(const char* output_name, bool enabled, int interval, 
-                            bool random, bool recursive, int transition, 
+                            bool random, bool recursive, int mode, int transition, 
                             float duration, int fps, const char** files, 
                             int file_count, int current_index)
 {
@@ -109,6 +109,7 @@ int ww_cache_save_slideshow(const char* output_name, bool enabled, int interval,
     fprintf(f, "interval=%d\n", interval);
     fprintf(f, "random=%d\n", random ? 1 : 0);
     fprintf(f, "recursive=%d\n", recursive ? 1 : 0);
+    fprintf(f, "mode=%d\n", mode);
     fprintf(f, "transition=%d\n", transition);
     fprintf(f, "duration=%.2f\n", duration);
     fprintf(f, "fps=%d\n", fps);
@@ -124,7 +125,7 @@ int ww_cache_save_slideshow(const char* output_name, bool enabled, int interval,
 }
 
 int ww_cache_load_slideshow(const char* output_name, bool* enabled, int* interval,
-                            bool* random, bool* recursive, int* transition,
+                            bool* random, bool* recursive, int* mode, int* transition,
                             float* duration, int* fps, char*** files,
                             int* file_count, int* current_index)
 {
@@ -143,7 +144,7 @@ int ww_cache_load_slideshow(const char* output_name, bool* enabled, int* interva
     
     std::vector<std::string> file_list;
     char line[2048];
-    int en = 0, rnd = 0, rec = 0;
+    int en = 0, rnd = 0, rec = 0, md = 0;
     
     while (fgets(line, sizeof(line), f)) {
         if (sscanf(line, "enabled=%d", &en) == 1)
@@ -153,6 +154,8 @@ int ww_cache_load_slideshow(const char* output_name, bool* enabled, int* interva
             *random = rnd != 0;
         else if (sscanf(line, "recursive=%d", &rec) == 1)
             *recursive = rec != 0;
+        else if (sscanf(line, "mode=%d", &md) == 1)
+            *mode = md;
         else if (sscanf(line, "transition=%d", transition) == 1) {}
         else if (sscanf(line, "duration=%f", duration) == 1) {}
         else if (sscanf(line, "fps=%d", fps) == 1) {}
