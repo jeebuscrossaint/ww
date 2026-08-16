@@ -32,8 +32,17 @@ static image_data_t* load_webp(const char *path)
     }
 
     fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
+    long file_len = ftell(file);
     fseek(file, 0, SEEK_SET);
+    // ftell returns -1 on error -- a directory, say. Assigning that to a size_t
+    // made file_size SIZE_MAX, so the malloc below merely "failed" and the user
+    // saw an out-of-memory rather than "not a readable file".
+    if (file_len <= 0) {
+        fprintf(stderr, "Not a readable file: %s\n", path);
+        fclose(file);
+        return nullptr;
+    }
+    size_t file_size = (size_t)file_len;
 
     uint8_t *file_data = (uint8_t*)malloc(file_size);
     if (!file_data) {
@@ -87,11 +96,31 @@ static image_data_t* load_tiff(const char *path)
         return nullptr;
     }
 
-    TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &img->width);
-    TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &img->height);
+    // img comes from malloc, so width/height are indeterminate until set, and
+    // TIFFGetField can fail on a malformed file. Ignoring its return value meant
+    // allocating from whatever happened to be on the heap.
+    uint32_t tw = 0, th = 0;
+    if (!TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tw) ||
+        !TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &th) ||
+        tw == 0 || th == 0) {
+        fprintf(stderr, "TIFF has no usable dimensions: %s\n", path);
+        TIFFClose(tif);
+        free(img);
+        return nullptr;
+    }
+    img->width = (int)tw;
+    img->height = (int)th;
     img->channels = 4;
 
-    size_t npixels = img->width * img->height;
+    // size_t throughout: w * h * 4 in int overflows around 23000x23000, and the
+    // dimensions come from the file, so they are not ours to trust.
+    size_t npixels = (size_t)tw * (size_t)th;
+    if (npixels > (size_t)1 << 28) { // ~268M pixels, over 1GiB decoded
+        fprintf(stderr, "TIFF too large (%ux%u): %s\n", tw, th, path);
+        TIFFClose(tif);
+        free(img);
+        return nullptr;
+    }
     img->data = (uint8_t*)malloc(npixels * 4);
     if (!img->data) {
         TIFFClose(tif);
@@ -137,8 +166,17 @@ static image_data_t* load_jxl(const char *path) {
     }
 
     fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
+    long file_len = ftell(file);
     fseek(file, 0, SEEK_SET);
+    // ftell returns -1 on error -- a directory, say. Assigning that to a size_t
+    // made file_size SIZE_MAX, so the malloc below merely "failed" and the user
+    // saw an out-of-memory rather than "not a readable file".
+    if (file_len <= 0) {
+        fprintf(stderr, "Not a readable file: %s\n", path);
+        fclose(file);
+        return nullptr;
+    }
+    size_t file_size = (size_t)file_len;
 
     uint8_t *file_data = (uint8_t*)malloc(file_size);
     if (!file_data) {
