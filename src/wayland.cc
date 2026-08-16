@@ -699,6 +699,28 @@ int ww_set_wallpaper_no_loop(const ww_config_t *config) {
         }
     }
     
+    // A name matching no output used to fall straight through the loop below
+    // without creating a surface, then block forever in the event loop waiting
+    // for a configure that could never arrive. Fail loudly instead.
+    if (config->output_name) {
+        bool found = false;
+        struct ww_output *o;
+        wl_list_for_each(o, &state->outputs, link) {
+            if (o->conn_name && strcmp(config->output_name, o->conn_name) == 0) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            char msg[256];
+            snprintf(msg, sizeof msg,
+                     "No output named '%s' (try: ww --list-outputs)",
+                     config->output_name);
+            set_error(msg);
+            return -1;
+        }
+    }
+
     // Iterate through outputs and set wallpaper
     struct ww_output *output;
     wl_list_for_each(output, &state->outputs, link) {
