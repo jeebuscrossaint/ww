@@ -41,6 +41,7 @@ struct ww_output {
     struct wl_output *wl_output;
     
     uint32_t name; // Registry name
+    char *conn_name; // Connector name ("eDP-1"), from wl_output.name (v4+)
     int32_t width;
     int32_t height;
     int32_t refresh;
@@ -205,10 +206,13 @@ static void output_scale(void *data, struct wl_output *wl_output, int32_t factor
 }
 
 static void output_name(void *data, struct wl_output *wl_output, const char *name) {
-    // Available in wl_output version 4+
-    (void)data;
+    // wl_output.name, added in version 4. This is the connector name -- "eDP-1",
+    // "HDMI-A-1" -- which is what users pass to --output. The geometry event's
+    // model field is not that: it is often empty or a panel part number.
     (void)wl_output;
-    (void)name;
+    struct ww_output *output = (struct ww_output*)data;
+    free(output->conn_name);
+    output->conn_name = name ? strdup(name) : NULL;
 }
 
 static void output_description(void *data, struct wl_output *wl_output, const char *description) {
@@ -428,7 +432,6 @@ static void frame_callback_handler(void *data, struct wl_callback *callback, uin
 static void registry_global(void *data, struct wl_registry *registry,
                            uint32_t name, const char *interface,
                            uint32_t version) {
-    (void)version;
     struct ww_state *state = (struct ww_state*)data;
     
     if (strcmp(interface, wl_compositor_interface.name) == 0) {
@@ -441,8 +444,11 @@ static void registry_global(void *data, struct wl_registry *registry,
         output->state = state;
         output->name = name;
         output->scale = 1;
-        output->wl_output = (struct wl_output*)wl_registry_bind(registry, name, 
-                                                  &wl_output_interface, 3);
+        // Bind 4 where offered: wl_output.name only exists from version 4, so
+        // binding 3 meant the name event never arrived.
+        uint32_t ver = version < 4 ? version : 4;
+        output->wl_output = (struct wl_output*)wl_registry_bind(registry, name,
+                                                  &wl_output_interface, ver);
         
         wl_output_add_listener(output->wl_output, &output_listener, output);
         wl_list_insert(&state->outputs, &output->link);
@@ -566,6 +572,7 @@ void ww_cleanup(void) {
         if (output->wl_output) {
             wl_output_destroy(output->wl_output);
         }
+        free(output->conn_name);
         free(output->make);
         free(output->model);
         wl_list_remove(&output->link);
@@ -627,11 +634,14 @@ int ww_list_outputs(ww_output_t **outputs, int *count) {
     // Fill output info
     int i = 0;
     wl_list_for_each(output, &global_state->outputs, link) {
-        if (output->model) {
+        // Prefer the connector name; fall back to the model string for
+        // compositors still on wl_output v3, and only then give up.
+        if (output->conn_name)
+            out[i].name = strdup(output->conn_name);
+        else if (output->model && output->model[0])
             out[i].name = strdup(output->model);
-        } else {
+        else
             out[i].name = strdup("Unknown");
-        }
         out[i].width = output->width;
         out[i].height = output->height;
         out[i].refresh_rate = output->refresh / 1000; // mHz to Hz
@@ -697,8 +707,8 @@ int ww_set_wallpaper_no_loop(const ww_config_t *config) {
         }
         
         // Skip if specific output requested and this isn't it
-        if (config->output_name && output->model && 
-            strcmp(config->output_name, output->model) != 0) {
+        if (config->output_name && output->conn_name &&
+            strcmp(config->output_name, output->conn_name) != 0) {
             continue;
         }
         
