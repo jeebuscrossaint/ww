@@ -132,8 +132,12 @@ static int create_shm_file(size_t size) {
 // Create shared memory buffer
 static struct wl_buffer* create_shm_buffer(struct wl_shm *shm, uint8_t **data_out, 
                                           int width, int height) {
-    int stride = width * 4; // RGBA
-    size_t size = stride * height;
+    // size_t: width * 4 * height in int overflows around 23000x23000, and these
+    // dimensions can come from a decoded file.
+    if (width <= 0 || height <= 0)
+        return nullptr;
+    size_t stride = (size_t)width * 4; // RGBA
+    size_t size = stride * (size_t)height;
     
     int fd = create_shm_file(size);
     if (fd < 0) {
@@ -311,9 +315,16 @@ static void transition_frame_callback_handler(void *data, struct wl_callback *ca
     bool still_active = ww_transition_update(output->transition, delta_time, &transition_output);
     
     if (transition_output && output->buffer_data) {
-        // Copy transition output to buffer (RGBA to BGRA conversion)
-        int pixel_count = output->width * output->height;
-        for (int i = 0; i < pixel_count; i++) {
+        // Copy transition output to buffer (RGBA to BGRA conversion).
+        //
+        // Bounded by buffer_size rather than width*height: the transition is
+        // only started when the image and output dimensions agree, but nothing
+        // re-checks that here, and output->width/height change under us on a
+        // mode switch or hotplug while buffer_size does not.
+        size_t pixel_count = (size_t)output->width * (size_t)output->height;
+        if (pixel_count > output->buffer_size / 4)
+            pixel_count = output->buffer_size / 4;
+        for (size_t i = 0; i < pixel_count; i++) {
             uint8_t r = transition_output[i * 4 + 0];
             uint8_t g = transition_output[i * 4 + 1];
             uint8_t b = transition_output[i * 4 + 2];
